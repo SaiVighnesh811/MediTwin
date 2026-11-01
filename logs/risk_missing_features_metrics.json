@@ -1,0 +1,79 @@
+{
+  "component": "risk_missing_features",
+  "seed": 42,
+  "repeats": 20,
+  "results": [
+    {
+      "scenario": "k=0 (Full 21 features)",
+      "k": 0,
+      "imputation": "None",
+      "balanced_acc": 51.45,
+      "macro_f1": 41.86,
+      "high_recall": 62.6
+    },
+    {
+      "scenario": "k=5 hidden",
+      "k": 5,
+      "imputation": "Training Median/Mode",
+      "balanced_acc": 48.46,
+      "macro_f1": 42.14,
+      "high_recall": 46.38
+    },
+    {
+      "scenario": "k=5 hidden",
+      "k": 5,
+      "imputation": "Healthy Defaults",
+      "balanced_acc": 45.94,
+      "macro_f1": 42.61,
+      "high_recall": 40.35
+    },
+    {
+      "scenario": "k=10 hidden",
+      "k": 10,
+      "imputation": "Training Median/Mode",
+      "balanced_acc": 43.4,
+      "macro_f1": 39.49,
+      "high_recall": 24.86
+    },
+    {
+      "scenario": "k=10 hidden",
+      "k": 10,
+      "imputation": "Healthy Defaults",
+      "balanced_acc": 38.75,
+      "macro_f1": 37.69,
+      "high_recall": 16.0
+    },
+    {
+      "scenario": "k=15 hidden",
+      "k": 15,
+      "imputation": "Training Median/Mode",
+      "balanced_acc": 38.08,
+      "macro_f1": 34.3,
+      "high_recall": 9.94
+    },
+    {
+      "scenario": "k=15 hidden",
+      "k": 15,
+      "imputation": "Healthy Defaults",
+      "balanced_acc": 35.46,
+      "macro_f1": 32.94,
+      "high_recall": 5.71
+    },
+    {
+      "scenario": "Extractable only (9 known, 12 assumed)",
+      "k": 12,
+      "imputation": "Training Median/Mode",
+      "balanced_acc": 47.41,
+      "macro_f1": 39.97,
+      "high_recall": 30.78
+    },
+    {
+      "scenario": "Extractable only (9 known, 12 assumed)",
+      "k": 12,
+      "imputation": "Healthy Defaults",
+      "balanced_acc": 39.82,
+      "macro_f1": 40.06,
+      "high_recall": 16.58
+    }
+  ]
+}

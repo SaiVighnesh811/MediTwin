@@ -1,0 +1,26 @@
+[
+  {
+    "timestamp": "2026-10-15T14:07:45.741684Z",
+    "component": "xai_agent",
+    "shap_version": "0.49.1",
+    "shap_method": "shap.Explainer(predict_proba, Independent masker, 200 bg rows)",
+    "shap_output_shape": "(n_samples, 21_features, 3_classes)",
+    "lime_stability_avg_overlap": 4.6,
+    "shap_lime_agreement_top3": 1.467,
+    "shap_lime_agreement_note": "avg top-3 overlap over 30 random patients",
+    "shap_faithfulness_drop": 0.1367,
+    "random_faithfulness_drop": 0.0054,
+    "faithfulness_supported": true,
+    "shap_time_per_patient_s": 3.007,
+    "lime_time_per_patient_s": 0.218,
+    "consistency_top_features": {
+      "HighBP": 16,
+      "GenHlth": 14,
+      "BMI": 9,
+      "Age": 9,
+      "HeartDiseaseorAttack": 5
+    },
+    "patients_used_for_consistency": 20,
+    "note": "TreeExplainer unavailable: shap 0.49.1 cannot parse multiclass XGBoost base_score vector as float. Used Permutation explainer instead."
+  }
+]

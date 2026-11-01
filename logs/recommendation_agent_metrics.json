@@ -1,0 +1,26 @@
+[
+  {
+    "timestamp": "2026-11-01T12:33:57.973948Z",
+    "component": "recommendation_agent",
+    "evaluation_type": "SYNTHETIC unit/sanity test (not clinical validation)",
+    "synthetic_cases_tested": 20,
+    "rule_trigger_pass_rate": 1.0,
+    "disclaimer_presence_rate": 1.0,
+    "doctor_note_presence_rate": 1.0,
+    "safety_violations_count": 20,
+    "clinical_expert_evaluation_status": "PENDING",
+    "status": "PASS"
+  },
+  {
+    "timestamp": "2026-11-01T12:34:36.539722Z",
+    "component": "recommendation_agent",
+    "evaluation_type": "SYNTHETIC unit/sanity test (not clinical validation)",
+    "synthetic_cases_tested": 20,
+    "rule_trigger_pass_rate": 1.0,
+    "disclaimer_presence_rate": 1.0,
+    "doctor_note_presence_rate": 1.0,
+    "safety_violations_count": 0,
+    "clinical_expert_evaluation_status": "PENDING",
+    "status": "PASS"
+  }
+]

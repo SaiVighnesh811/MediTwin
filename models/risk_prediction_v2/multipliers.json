@@ -1,0 +1,8 @@
+{
+  "Low": 1.0,
+  "Medium": 1.0,
+  "High": 1.0,
+  "tuned_on": "validation set (20% of train, never test)",
+  "val_macro_f1_before": 0.4174,
+  "val_macro_f1_after": 0.4174
+}

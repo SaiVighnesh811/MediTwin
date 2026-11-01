@@ -1,0 +1,51 @@
+[
+  {
+    "timestamp": "2026-10-18T14:11:08.960716Z",
+    "component": "ocr_agent_extraction",
+    "evaluated_on": "30 synthetic GT text strings (not OCR output)",
+    "fields_prf": {
+      "medicine": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "dosage": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "frequency": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "duration": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "test_name": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "value": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "unit": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "reference": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    "failure_count": 0,
+    "note": "Regex extraction on known ground-truth text. Separate from OCR accuracy."
+  }
+]

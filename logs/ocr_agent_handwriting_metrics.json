@@ -1,0 +1,18 @@
+[
+  {
+    "timestamp": "2026-10-18T14:10:06.131141Z",
+    "component": "ocr_agent_handwriting",
+    "accuracy": 0.7577,
+    "top3_accuracy": 0.8731,
+    "macro_precision": 0.7929,
+    "macro_recall": 0.7577,
+    "macro_f1": 0.7499,
+    "classes_zero_correct": 0,
+    "total_classes": 78,
+    "test_size": 780,
+    "epochs_trained": 5,
+    "best_val_loss": 0.6563,
+    "model": "ResNet18 ImageNet pretrained, FC\u219278",
+    "note": "Official train/val/test split from dataset authors used."
+  }
+]

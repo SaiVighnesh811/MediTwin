@@ -1,0 +1,21 @@
+[
+  {
+    "timestamp": "2026-11-01T11:56:06.446816Z",
+    "component": "nlp_agent_pretrained",
+    "model_name": "d4data/biomedical-ner-all",
+    "architecture": "DistilBertForTokenClassification (6-layer, 768-dim)",
+    "local_path": "models/nlp/d4data_biomedical_ner_all/",
+    "license": "Apache-2.0",
+    "num_labels": 84,
+    "avg_latency_ms": 211,
+    "warmup_latency_ms": 1500,
+    "rss_after_load_mb": 725,
+    "rss_after_nlp_load_mb": 887,
+    "rss_after_nlp_inference_mb": 1081,
+    "maccrobat_f1": "NOT_MEASURED (model trained on MACCROBAT; computing F1 would be data leakage)",
+    "entity_groups_mapped": 4,
+    "entity_types_mapped": 5,
+    "entity_types_unmapped_to_other": 38,
+    "note": "Pretrained, not fine-tuned by us. Apache-2.0 per model card. Subword tokenization causes partial entity strings. History context causes hypertension/diabetes to tag as History not Disease_disorder."
+  }
+]

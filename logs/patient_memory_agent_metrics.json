@@ -1,0 +1,50 @@
+[
+  {
+    "timestamp": "2026-11-01T12:31:09.805759Z",
+    "component": "patient_memory_agent",
+    "dataset_type": "SYNTHETIC with known ground truth",
+    "timeline_order_accuracy": 1.0,
+    "timeline_patients_tested": 5,
+    "timeline_events_per_patient": 20,
+    "adapter_extraction_precision": 1.0,
+    "adapter_extraction_recall": 0.7666666666666667,
+    "adapter_extraction_f1": 0.8679245283018869,
+    "adapter_synthetic_ocr_lines": 30,
+    "retrieval_precision": 1.0,
+    "retrieval_recall": 1.0,
+    "retrieval_queries_tested": 30,
+    "status": "PASS"
+  },
+  {
+    "timestamp": "2026-11-01T16:13:04.047239Z",
+    "component": "patient_memory_agent",
+    "dataset_type": "SYNTHETIC with known ground truth",
+    "timeline_order_accuracy": 1.0,
+    "timeline_patients_tested": 5,
+    "timeline_events_per_patient": 20,
+    "adapter_extraction_precision": 1.0,
+    "adapter_extraction_recall": 0.7666666666666667,
+    "adapter_extraction_f1": 0.8679245283018869,
+    "adapter_synthetic_ocr_lines": 30,
+    "retrieval_precision": 1.0,
+    "retrieval_recall": 1.0,
+    "retrieval_queries_tested": 30,
+    "status": "PASS"
+  },
+  {
+    "timestamp": "2026-11-01T17:12:23.686997Z",
+    "component": "patient_memory_agent",
+    "dataset_type": "SYNTHETIC with known ground truth",
+    "timeline_order_accuracy": 1.0,
+    "timeline_patients_tested": 5,
+    "timeline_events_per_patient": 20,
+    "adapter_extraction_precision": 1.0,
+    "adapter_extraction_recall": 0.7666666666666667,
+    "adapter_extraction_f1": 0.8679245283018869,
+    "adapter_synthetic_ocr_lines": 30,
+    "retrieval_precision": 1.0,
+    "retrieval_recall": 1.0,
+    "retrieval_queries_tested": 30,
+    "status": "PASS"
+  }
+]

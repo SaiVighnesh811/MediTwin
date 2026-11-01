@@ -1,0 +1,452 @@
+{
+  "patient_id": "p",
+  "events": [
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": "Metformin",
+        "dosage": "500 mg",
+        "frequency": "once daily",
+        "duration": "30 day"
+      },
+      "timestamp": "2026-11-01T16:14:26.639612+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": "Amoxicillin",
+        "dosage": "500 mg",
+        "frequency": null,
+        "duration": null
+      },
+      "timestamp": "2026-11-01T16:14:26.640641+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": "Atorvastatin",
+        "dosage": "20 mg",
+        "frequency": "at bedtime",
+        "duration": null
+      },
+      "timestamp": "2026-11-01T16:14:26.642516+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "status": "field_missing",
+        "field": "medicine",
+        "raw": {
+          "type": "prescription",
+          "medicine": null,
+          "dosage": "50 mg",
+          "frequency": "once daily",
+          "duration": null
+        }
+      },
+      "timestamp": "2026-11-01T16:14:26.644673+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": "Omeprazole",
+        "dosage": "20 mg",
+        "frequency": "before breakfast",
+        "duration": null
+      },
+      "timestamp": "2026-11-01T16:14:26.646228+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": "Amlodipine",
+        "dosage": "5 mg",
+        "frequency": "once daily",
+        "duration": null
+      },
+      "timestamp": "2026-11-01T16:14:26.647395+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": "Paracetamol",
+        "dosage": "500 mg",
+        "frequency": null,
+        "duration": null
+      },
+      "timestamp": "2026-11-01T16:14:26.648865+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "status": "field_missing",
+        "field": "medicine",
+        "raw": {
+          "type": "prescription",
+          "medicine": null,
+          "dosage": "500 mg",
+          "frequency": "twice daily",
+          "duration": null
+        }
+      },
+      "timestamp": "2026-11-01T16:14:26.650691+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "status": "field_missing",
+        "field": "medicine",
+        "raw": {
+          "type": "prescription",
+          "medicine": null,
+          "dosage": "40 mg",
+          "frequency": "before breakfast",
+          "duration": null
+        }
+      },
+      "timestamp": "2026-11-01T16:14:26.652149+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": "Azithromycin",
+        "dosage": "500 mg",
+        "frequency": "once daily",
+        "duration": "3 day"
+      },
+      "timestamp": "2026-11-01T16:14:26.653529+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": "Cetirizine",
+        "dosage": "10 mg",
+        "frequency": "at night",
+        "duration": null
+      },
+      "timestamp": "2026-11-01T16:14:26.655276+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "status": "field_missing",
+        "field": "medicine",
+        "raw": {
+          "type": "prescription",
+          "medicine": null,
+          "dosage": "10 mg",
+          "frequency": "once daily",
+          "duration": null
+        }
+      },
+      "timestamp": "2026-11-01T16:14:26.656614+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "status": "field_missing",
+        "field": "medicine",
+        "raw": {
+          "type": "prescription",
+          "medicine": null,
+          "dosage": "40 mg",
+          "frequency": "once daily",
+          "duration": null
+        }
+      },
+      "timestamp": "2026-11-01T16:14:26.658020+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "status": "field_missing",
+        "field": "medicine",
+        "raw": {
+          "type": "prescription",
+          "medicine": null,
+          "dosage": "2 mg",
+          "frequency": "once daily",
+          "duration": null
+        }
+      },
+      "timestamp": "2026-11-01T16:14:26.659554+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "status": "field_missing",
+        "field": "medicine",
+        "raw": {
+          "type": "prescription",
+          "medicine": null,
+          "dosage": "400 mg",
+          "frequency": "twice daily",
+          "duration": null
+        }
+      },
+      "timestamp": "2026-11-01T16:14:26.661581+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "lab_value",
+      "data": {
+        "test": "HbA1c",
+        "value": "6.8",
+        "unit": "%",
+        "reference": "4.0-5.6"
+      },
+      "timestamp": "2026-11-01T16:14:26.663055+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "status": "field_missing",
+        "field": "medicine",
+        "raw": {
+          "type": "prescription",
+          "medicine": null,
+          "dosage": "110 mg",
+          "frequency": null,
+          "duration": null
+        }
+      },
+      "timestamp": "2026-11-01T16:14:26.664562+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "status": "field_missing",
+        "field": "medicine",
+        "raw": {
+          "type": "prescription",
+          "medicine": null,
+          "dosage": "195 mg",
+          "frequency": null,
+          "duration": null
+        }
+      },
+      "timestamp": "2026-11-01T16:14:26.665984+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "lab_value",
+      "data": {
+        "test": "Haemoglobin",
+        "value": "11.2",
+        "unit": "g/dL",
+        "reference": "12.0-16.0"
+      },
+      "timestamp": "2026-11-01T16:14:26.794342+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "status": "field_missing",
+        "field": "medicine",
+        "raw": {
+          "type": "prescription",
+          "medicine": null,
+          "dosage": "1.1 mg",
+          "frequency": null,
+          "duration": null
+        }
+      },
+      "timestamp": "2026-11-01T16:14:26.796525+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "lab_value",
+      "data": {
+        "test": "ALT SGPT",
+        "value": "45",
+        "unit": "U/L",
+        "reference": "7-56"
+      },
+      "timestamp": "2026-11-01T16:14:26.798122+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "lab_value",
+      "data": {
+        "test": "TSH",
+        "value": "2.3",
+        "unit": "mIU/L",
+        "reference": "0.4-4.5"
+      },
+      "timestamp": "2026-11-01T16:14:26.799861+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "lab_value",
+      "data": {
+        "test": "Platelet Count",
+        "value": "210000",
+        "unit": "cells/uL",
+        "reference": "150000-400000"
+      },
+      "timestamp": "2026-11-01T16:14:26.801917+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "status": "field_missing",
+        "field": "medicine",
+        "raw": {
+          "type": "prescription",
+          "medicine": null,
+          "dosage": "28 mg",
+          "frequency": null,
+          "duration": null
+        }
+      },
+      "timestamp": "2026-11-01T16:14:26.803290+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "lab_value",
+      "data": {
+        "test": "WBC",
+        "value": "7500",
+        "unit": "cells/uL",
+        "reference": "4000-11000"
+      },
+      "timestamp": "2026-11-01T16:14:26.804863+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "status": "field_missing",
+        "field": "medicine",
+        "raw": {
+          "type": "prescription",
+          "medicine": null,
+          "dosage": "118 mg",
+          "frequency": null,
+          "duration": null
+        }
+      },
+      "timestamp": "2026-11-01T16:14:26.806212+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "status": "field_missing",
+        "field": "medicine",
+        "raw": {
+          "type": "prescription",
+          "medicine": null,
+          "dosage": "52 mg",
+          "frequency": null,
+          "duration": null
+        }
+      },
+      "timestamp": "2026-11-01T16:14:26.807715+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "status": "field_missing",
+        "field": "medicine",
+        "raw": {
+          "type": "prescription",
+          "medicine": null,
+          "dosage": "5.8 mg",
+          "frequency": null,
+          "duration": null
+        }
+      },
+      "timestamp": "2026-11-01T16:14:26.809221+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "lab_value",
+      "data": {
+        "test": "Sodium",
+        "value": "138",
+        "unit": "mEq/L",
+        "reference": "136-145"
+      },
+      "timestamp": "2026-11-01T16:14:26.810721+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "lab_value",
+      "data": {
+        "test": "Potassium",
+        "value": "4.1",
+        "unit": "mEq/L",
+        "reference": "3.5-5.1"
+      },
+      "timestamp": "2026-11-01T16:14:26.812260+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "status": "field_missing",
+        "field": "medicine",
+        "raw": {
+          "type": "prescription",
+          "medicine": null,
+          "dosage": "50 mg",
+          "frequency": "once daily",
+          "duration": null
+        }
+      },
+      "timestamp": "2026-11-01T16:14:47.153952+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    }
+  ]
+}

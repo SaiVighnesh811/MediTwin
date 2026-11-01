@@ -1,0 +1,132 @@
+[
+  {
+    "timestamp": "2026-10-22T12:06:24.275856Z",
+    "component": "ocr_agent_extraction_e2e",
+    "note": "E2E: EasyOCR output \u2192 extract_fields(). Fields evaluated against ground-truth.",
+    "n_images": 30,
+    "n_clean": 15,
+    "n_noisy": 15,
+    "v1_per_field": {
+      "medicine": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "dosage": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "frequency": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "duration": {
+        "precision": 1.0,
+        "recall": 0.9,
+        "f1": 0.9474
+      },
+      "test": {
+        "precision": 1.0,
+        "recall": 0.4667,
+        "f1": 0.6364
+      },
+      "value": {
+        "precision": 1.0,
+        "recall": 0.4667,
+        "f1": 0.6364
+      },
+      "unit": {
+        "precision": 0.4286,
+        "recall": 0.2,
+        "f1": 0.2727
+      },
+      "reference": {
+        "precision": 1.0,
+        "recall": 0.4667,
+        "f1": 0.6364
+      }
+    },
+    "v1_macro": {
+      "macro_precision": 0.9286,
+      "macro_recall": 0.6875,
+      "macro_f1": 0.7662
+    },
+    "v1_clean_macro": {
+      "precision": 0.95,
+      "recall": 0.8214,
+      "f1": 0.875
+    },
+    "v1_noisy_macro": {
+      "precision": 0.875,
+      "recall": 0.5687,
+      "f1": 0.6361
+    },
+    "v1_failure_count": 37,
+    "v2_changes": [
+      "unit normaliser: mgldL/mgl \u2192 mg/dL",
+      "unit normaliser: mEqIL/MEq/L \u2192 mEq/L",
+      "unit normaliser: cells/uUL \u2192 cells/uL"
+    ],
+    "v2_label": "tuned on same 30 lines",
+    "v2_per_field": {
+      "medicine": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "dosage": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "frequency": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "duration": {
+        "precision": 1.0,
+        "recall": 0.9,
+        "f1": 0.9474
+      },
+      "test": {
+        "precision": 1.0,
+        "recall": 0.4667,
+        "f1": 0.6364
+      },
+      "value": {
+        "precision": 1.0,
+        "recall": 0.4667,
+        "f1": 0.6364
+      },
+      "unit": {
+        "precision": 0.7143,
+        "recall": 0.3333,
+        "f1": 0.4545
+      },
+      "reference": {
+        "precision": 1.0,
+        "recall": 0.4667,
+        "f1": 0.6364
+      }
+    },
+    "v2_macro": {
+      "macro_precision": 0.9643,
+      "macro_recall": 0.7042,
+      "macro_f1": 0.7889
+    },
+    "v2_clean_macro": {
+      "precision": 0.975,
+      "recall": 0.8393,
+      "f1": 0.8958
+    },
+    "v2_noisy_macro": {
+      "precision": 0.9375,
+      "recall": 0.5844,
+      "f1": 0.6611
+    },
+    "v2_failure_count": 35
+  }
+]

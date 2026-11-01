@@ -1,0 +1,40 @@
+[
+  {
+    "timestamp": "2026-11-01T11:06:09.563545Z",
+    "component": "medical_image_agent",
+    "accuracy": 0.8478,
+    "precision": 0.8118,
+    "recall": 0.9846,
+    "specificity": 0.6197,
+    "f1": 0.8899,
+    "roc_auc": 0.9473,
+    "confusion_matrix": {
+      "tn": 145,
+      "fp": 89,
+      "fn": 6,
+      "tp": 384
+    },
+    "avg_latency_ms": 173.44,
+    "samples": 624,
+    "threshold": 0.5
+  },
+  {
+    "timestamp": "2026-11-01T11:23:28.070002Z",
+    "component": "medical_image_agent",
+    "accuracy": 0.8478,
+    "precision": 0.8118,
+    "recall": 0.9846,
+    "specificity": 0.6197,
+    "f1": 0.8899,
+    "roc_auc": 0.9473,
+    "confusion_matrix": {
+      "tn": 145,
+      "fp": 89,
+      "fn": 6,
+      "tp": 384
+    },
+    "avg_latency_ms": 201.78,
+    "samples": 624,
+    "threshold": 0.5
+  }
+]

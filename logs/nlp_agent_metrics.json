@@ -1,0 +1,60 @@
+[
+  {
+    "timestamp": "2026-10-30T05:08:05.447320Z",
+    "component": "nlp_agent",
+    "model": "distilbert-base-uncased",
+    "epochs": 3,
+    "training_history": [
+      {
+        "epoch": 1,
+        "tr_loss": 1.3378,
+        "va_loss": 1.0374,
+        "va_f1": 0.0
+      },
+      {
+        "epoch": 2,
+        "tr_loss": 0.9172,
+        "va_loss": 0.9772,
+        "va_f1": 0.0
+      },
+      {
+        "epoch": 3,
+        "tr_loss": 0.8771,
+        "va_loss": 0.9682,
+        "va_f1": 0.0
+      }
+    ],
+    "best_val_f1": 0.0,
+    "baseline_test": {
+      "micro_p": 0.362,
+      "micro_r": 0.4785,
+      "micro_f1": 0.4122,
+      "macro_p": 0.3754,
+      "macro_r": 0.4066,
+      "macro_f1": 0.3763
+    },
+    "finetuned_test": {
+      "micro_p": 0.0,
+      "micro_r": 0.0,
+      "micro_f1": 0.0,
+      "macro_p": 0.0,
+      "macro_r": 0.0,
+      "macro_f1": 0.0
+    },
+    "label_list": [
+      "O",
+      "B-DISEASE",
+      "I-DISEASE",
+      "B-SYMPTOM",
+      "I-SYMPTOM",
+      "B-MEDICATION",
+      "I-MEDICATION",
+      "B-PROCEDURE",
+      "I-PROCEDURE"
+    ],
+    "train_docs": 140,
+    "val_docs": 30,
+    "test_docs": 30,
+    "note": "CPU-only, BIO NER, seqeval strict entity-level scoring."
+  }
+]

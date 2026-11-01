@@ -1,0 +1,15 @@
+venv/
+__pycache__/
+*.pyc
+.env
+*.token
+access_token
+kaggle.json
+data/raw/
+data/processed/
+models/nlp/
+*.log
+nohup.out
+.ipynb_checkpoints/
+models/medical_image_download/
+models/medical_image/resnet18_xray.pt

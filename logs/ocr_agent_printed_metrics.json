@@ -1,0 +1,18 @@
+[
+  {
+    "timestamp": "2026-10-18T14:11:08.952776Z",
+    "component": "ocr_agent_printed",
+    "note": "Synthetic images generated with PIL (NOT real scanned documents)",
+    "n_images": 30,
+    "n_clean": 15,
+    "n_noisy": 15,
+    "ocr_engine": "EasyOCR (English, pretrained, no fine-tuning)",
+    "metric_library": "jiwer",
+    "overall_cer": 0.0122,
+    "overall_wer": 0.0509,
+    "clean_cer": 0.0078,
+    "clean_wer": 0.0244,
+    "noisy_cer": 0.0166,
+    "noisy_wer": 0.0774
+  }
+]

@@ -1,0 +1,20 @@
+{
+  "patient_id": "TEST_6_FEATURES_PATIENT",
+  "events": [
+    {
+      "event_type": "risk_assessment",
+      "data": {
+        "risk_level": "Medium",
+        "probabilities": {
+          "High": 0.3597,
+          "Low": 0.2208,
+          "Medium": 0.4196
+        },
+        "features_used": 21
+      },
+      "timestamp": "2026-11-01T16:42:55.015293+00:00",
+      "date_uncertain": true,
+      "source": "risk_agent"
+    }
+  ]
+}

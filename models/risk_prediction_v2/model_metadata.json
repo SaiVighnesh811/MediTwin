@@ -1,0 +1,48 @@
+{
+  "model": "XGBClassifier v2",
+  "dataset": "alexteboul/diabetes-health-indicators-dataset",
+  "feature_names": [
+    "HighBP",
+    "HighChol",
+    "CholCheck",
+    "BMI",
+    "Smoker",
+    "Stroke",
+    "HeartDiseaseorAttack",
+    "PhysActivity",
+    "Fruits",
+    "Veggies",
+    "HvyAlcoholConsump",
+    "AnyHealthcare",
+    "NoDocbcCost",
+    "GenHlth",
+    "MentHlth",
+    "PhysHlth",
+    "DiffWalk",
+    "Sex",
+    "Age",
+    "Education",
+    "Income"
+  ],
+  "classes": [
+    "High",
+    "Low",
+    "Medium"
+  ],
+  "leakage_check": "PASSED",
+  "smote": false,
+  "sample_weight": "balanced",
+  "best_params": {
+    "subsample": 0.8,
+    "reg_lambda": 1.0,
+    "reg_alpha": 1.0,
+    "min_child_weight": 1,
+    "max_depth": 4,
+    "learning_rate": 0.03,
+    "gamma": 0,
+    "colsample_bytree": 0.8
+  },
+  "best_iteration": 1998,
+  "chapter": 1,
+  "component": "risk_prediction_agent"
+}
