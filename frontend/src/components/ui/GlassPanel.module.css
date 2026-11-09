@@ -1,0 +1,15 @@
+.panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-lg);
+  transition: box-shadow 0.25s ease;
+  /* Default inner padding — prevents content from touching borders */
+  padding: clamp(1.25rem, 2.5vw, 2rem);
+}
+
+.glow {
+  box-shadow: var(--shadow-glow);
+}
+

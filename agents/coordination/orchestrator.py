@@ -160,8 +160,28 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
     xray_path = case.get("chest_xray_path")
     if xray_path and os.path.exists(xray_path):
         try:
-            from agents.medical_image_agent.medical_image_agent import predict_image
-            img_res = predict_image(xray_path)
+            age_years = case.get("patient_age_years")
+            if age_years is None:
+                # Cannot select the correct model without age
+                raise ValueError(
+                    "patient_age_years is required to select the X-ray model "
+                    "(pediatric Kermany ResNet18 for age < 18, "
+                    "adult TorchXRayVision DenseNet121 for age >= 18)."
+                )
+            if int(age_years) < 18:
+                # Pediatric: Kermany ResNet18
+                from agents.medical_image_agent.medical_image_agent import predict_image
+                img_res = predict_image(xray_path)
+                img_res["model_used"] = "pediatric_kermany_resnet18"
+                img_res["population"] = (
+                    "Pediatric chest X-rays "
+                    "(Guangzhou Women and Children's Medical Center)"
+                )
+            else:
+                # Adult: TorchXRayVision DenseNet121-res224-all
+                from agents.medical_image_agent.adult_xray_agent import predict_adult_xray
+                img_res = predict_adult_xray(xray_path)
+
             context["medical_image"] = img_res
             adapt_medical_image_result(patient_id, img_res, timestamp=timestamp, memory_agent=mem_agent)
             agent_status["medical_image_agent"] = "ok"

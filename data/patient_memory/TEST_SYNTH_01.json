@@ -1,0 +1,150 @@
+{
+  "patient_id": "TEST_SYNTH_01",
+  "events": [
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": {
+          "text": "Amlodipine",
+          "start": 50,
+          "end": 60,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-06T10:11:06.790500+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "risk_assessment",
+      "data": {
+        "risk_level": "Medium",
+        "probabilities": {
+          "High": 0.3169,
+          "Low": 0.3122,
+          "Medium": 0.3708
+        },
+        "features_used": 21
+      },
+      "timestamp": "2026-11-06T10:11:33.644382+00:00",
+      "date_uncertain": true,
+      "source": "risk_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": {
+          "text": "Amlodipine",
+          "start": 50,
+          "end": 60,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-08T04:32:32.423829+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "risk_assessment",
+      "data": {
+        "risk_level": "Medium",
+        "probabilities": {
+          "High": 0.3169,
+          "Low": 0.3122,
+          "Medium": 0.3708
+        },
+        "features_used": 21
+      },
+      "timestamp": "2026-11-08T04:32:53.503852+00:00",
+      "date_uncertain": true,
+      "source": "risk_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": {
+          "text": "Amlodipine",
+          "start": 50,
+          "end": 60,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-08T04:36:51.270149+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "risk_assessment",
+      "data": {
+        "risk_level": "Medium",
+        "probabilities": {
+          "High": 0.3169,
+          "Low": 0.3122,
+          "Medium": 0.3708
+        },
+        "features_used": 21
+      },
+      "timestamp": "2026-11-08T04:37:04.088431+00:00",
+      "date_uncertain": true,
+      "source": "risk_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": {
+          "text": "Amlodipine",
+          "start": 50,
+          "end": 60,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-08T04:45:44.813859+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "risk_assessment",
+      "data": {
+        "risk_level": "Medium",
+        "probabilities": {
+          "High": 0.3169,
+          "Low": 0.3122,
+          "Medium": 0.3708
+        },
+        "features_used": 21
+      },
+      "timestamp": "2026-11-08T04:46:05.525680+00:00",
+      "date_uncertain": true,
+      "source": "risk_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": {
+          "text": "Amlodipine",
+          "start": 50,
+          "end": 60,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-09T07:50:18.090334+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "risk_assessment",
+      "data": {
+        "risk_level": "Medium",
+        "probabilities": {
+          "High": 0.3169,
+          "Low": 0.3122,
+          "Medium": 0.3708
+        },
+        "features_used": 21
+      },
+      "timestamp": "2026-11-09T07:51:18.290302+00:00",
+      "date_uncertain": true,
+      "source": "risk_agent"
+    }
+  ]
+}

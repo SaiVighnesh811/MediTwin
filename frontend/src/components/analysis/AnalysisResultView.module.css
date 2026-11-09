@@ -1,0 +1,383 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Disclaimer Bar */
+.disclaimerBar {
+  padding: 0.75rem 1rem;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--accent-amber);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Reliability Banner */
+.reliabilityBanner {
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.rel_low {
+  background: color-mix(in srgb, var(--accent-amber) 10%, transparent);
+  border-color: var(--accent-amber);
+  color: #fef3c7;
+}
+
+.rel_medium {
+  background: color-mix(in srgb, var(--accent-blue) 10%, transparent);
+  border-color: var(--accent-blue);
+  color: #e0f2fe;
+}
+
+.rel_high {
+  background: color-mix(in srgb, var(--accent-teal) 8%, transparent);
+  border-color: var(--accent-teal);
+  color: #ccfbf1;
+}
+
+.reliabilityTitle {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.reliabilityReasons {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+/* Big Risk Section */
+.riskClassHeading {
+  font-family: var(--font-serif);
+  font-size: var(--text-2xl);
+  margin-bottom: 0.5rem;
+}
+
+.riskClassConfident {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  color: var(--accent-teal);
+  margin: 0.5rem 0;
+}
+
+.riskClassMuted {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  font-style: italic;
+  color: var(--text-secondary);
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-surface);
+  border-left: 3px solid var(--accent-amber);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* SVG Bar Charts */
+.barRow {
+  display: grid;
+  grid-template-columns: 80px 1fr 60px;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+
+.barTrack {
+  height: 12px;
+  background: var(--bg-surface-elevated);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-hairline);
+}
+
+.barFill {
+  height: 100%;
+  border-radius: var(--radius-sm);
+  transition: width 0.6s ease;
+}
+
+.barFill_Low { background: var(--accent-teal); }
+.barFill_Medium { background: var(--accent-amber); }
+.barFill_High { background: var(--accent-rose); }
+
+/* Diverging SHAP/LIME chart */
+.divergeChart {
+  margin-top: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.axisCaption {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+  padding: 0 4px;
+  user-select: none;
+}
+
+.divergeRow {
+  display: grid;
+  grid-template-columns: minmax(130px, 180px) 1fr 85px;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.84rem;
+}
+
+.divergeLabel {
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.divergeCenter {
+  position: relative;
+  height: 20px;
+  background: var(--bg-surface-elevated);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-hairline);
+  overflow: hidden;
+}
+
+.divergeZeroLine {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border-subtle);
+  z-index: 2;
+  transform: translateX(-50%);
+}
+
+.divergeBarLeft {
+  position: absolute;
+  right: 50%;
+  top: 2px;
+  bottom: 2px;
+  background: var(--accent-teal);
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.divergeBarRight {
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  bottom: 2px;
+  background: var(--accent-rose);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.divergeValue {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.2rem;
+}
+
+.valPositive {
+  color: var(--accent-rose);
+}
+
+.valNegative {
+  color: var(--accent-teal);
+}
+
+.divergeSentence {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0 0 0.85rem 0;
+  padding-left: 0.25rem;
+  line-height: 1.4;
+}
+
+.explainFooter {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+/* Partial alert */
+.partialNotice {
+  padding: 1rem;
+  background: color-mix(in srgb, var(--accent-amber) 15%, transparent);
+  border: 1px solid var(--accent-amber);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+/* Details and Limitations toggles */
+.detailsBox {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border-hairline);
+  padding-top: 0.75rem;
+}
+
+.detailsSummary {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.detailsSummary:hover {
+  color: var(--text-primary);
+}
+
+.limitationsList {
+  margin: 0.5rem 0 0 1rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Chips for NLP */
+.entityChip {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  margin: 0.2rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  border: 1px solid;
+}
+
+.chip_DISEASE {
+  background: rgba(244, 63, 94, 0.15);
+  border-color: var(--accent-rose);
+  color: #fda4af;
+}
+
+.chip_SYMPTOM {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: var(--accent-amber);
+  color: #fde68a;
+}
+
+.chip_MEDICATION {
+  background: rgba(94, 234, 212, 0.15);
+  border-color: var(--accent-teal);
+  color: #a7f3d0;
+}
+
+.chip_PROCEDURE {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: var(--accent-blue);
+  color: #bae6fd;
+}
+
+
+
+/* Neutral skipped agents notice */
+.skippedBox {
+  padding: 0.6rem 0.85rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.skippedSummary {
+  cursor: pointer;
+  user-select: none;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.skippedSummary:hover {
+  color: var(--text-secondary);
+}
+
+.skippedList {
+  margin: 0.5rem 0 0 1.25rem;
+  padding: 0;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+/* Uncertainty line above recommendations */
+.recommendationUncertaintyNotice {
+  padding: 0.75rem 1rem;
+  background: color-mix(in srgb, var(--accent-amber) 12%, transparent);
+  border-left: 3px solid var(--accent-amber);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 0.88rem;
+  color: #fef3c7;
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+}
+
+/* Structured recommendation cards */
+.recCard {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 0.85rem;
+}
+
+.recHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.recTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--accent-teal);
+  margin: 0;
+}
+
+.recCategory {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  text-transform: capitalize;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-hairline);
+}
+
+.recText {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin: 0;
+}

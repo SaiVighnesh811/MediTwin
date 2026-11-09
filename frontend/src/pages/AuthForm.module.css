@@ -1,0 +1,268 @@
+/* Auth pages: split layout (left panel + right form) */
+.page {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: calc(100svh - var(--nav-height, 64px));
+}
+
+/* Left panel — decorative */
+.panel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-hairline);
+  overflow: hidden;
+}
+
+.panelCanvas {
+  position: absolute;
+  inset: 0;
+}
+
+.panelOverlay {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 2rem;
+}
+
+.panelHeading {
+  font-family: var(--font-serif);
+  font-size: var(--text-2xl);
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.panelHeading em {
+  font-style: italic;
+  color: var(--accent-teal);
+}
+
+.panelSub {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  max-width: 32ch;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* Right side — form area */
+.formSide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  overflow-y: auto;
+}
+
+.formContainer {
+  width: 100%;
+  max-width: 420px;
+}
+
+.formTitle {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.formSub {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.formSub a {
+  color: var(--accent-teal);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Form field */
+.field {
+  position: relative;
+  margin-bottom: 1.25rem;
+}
+
+.input {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  padding-top: 1.3rem;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input:focus {
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 0 3px var(--accent-teal-glow);
+}
+
+.input.hasError {
+  border-color: var(--accent-rose);
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.15);
+}
+
+/* Floating label */
+.floatLabel {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+
+.input:focus ~ .floatLabel,
+.input:not(:placeholder-shown) ~ .floatLabel {
+  top: 0.55rem;
+  transform: translateY(0);
+  font-size: 0.7rem;
+  color: var(--accent-teal);
+  letter-spacing: 0.04em;
+}
+
+/* Password toggle */
+.pwToggle {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  padding: 0.3rem;
+}
+
+.pwToggle:hover {
+  color: var(--text-primary);
+}
+
+/* Field error */
+.fieldError {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  color: var(--accent-rose);
+  margin-top: 0.3rem;
+  min-height: 1rem;
+}
+
+/* Password strength meter */
+.strengthBar {
+  display: flex;
+  gap: 4px;
+  margin-top: 0.4rem;
+  margin-bottom: 0.2rem;
+}
+
+.strengthSeg {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border-subtle);
+  transition: background 0.3s ease;
+}
+
+.strengthSeg.active1 { background: var(--accent-rose); }
+.strengthSeg.active2 { background: var(--accent-amber); }
+.strengthSeg.active3 { background: var(--accent-teal); }
+
+.strengthLabel {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Form-level error */
+.formError {
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 1rem;
+  background: rgba(244, 63, 94, 0.08);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--accent-rose);
+}
+
+/* Submit button */
+.submitBtn {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.submitBtn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Divider line */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.25rem 0;
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-hairline);
+}
+
+/* Back link */
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 1.5rem;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.backLink:hover {
+  color: var(--text-primary);
+}
+
+@media (max-width: 860px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+  .panel {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input,
+  .floatLabel,
+  .strengthSeg {
+    transition: none;
+  }
+}
+

@@ -1,0 +1,121 @@
+.hero {
+  min-height: 100svh;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  align-items: center;
+  gap: 2rem;
+  padding: clamp(3rem, 8vh, 6rem) clamp(1.5rem, 5vw, 4rem);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Conic mesh background */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(
+    from var(--conic-angle) at 30% 50%,
+    transparent 0deg,
+    color-mix(in srgb, var(--accent-teal) 4%, transparent) 60deg,
+    transparent 120deg
+  );
+  pointer-events: none;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--accent-teal);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.headline {
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 5.5vw, 5rem);
+  font-weight: 700;
+  line-height: 1.07;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.headline em {
+  font-style: italic;
+  color: var(--accent-teal);
+}
+
+.subline {
+  font-family: var(--font-sans);
+  font-size: clamp(1rem, 1.5vw, 1.15rem);
+  color: var(--text-secondary);
+  max-width: 52ch;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.disclaimer {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Canvas panel ── */
+.canvasWrap {
+  position: relative;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-hairline);
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  background: var(--glass-bg);
+  backdrop-filter: blur(4px);
+}
+
+.canvasLabel {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent-teal);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    padding-top: 4rem;
+  }
+
+  .canvasWrap {
+    aspect-ratio: 16 / 7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero::before {
+    animation: none;
+  }
+}
+

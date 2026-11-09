@@ -1,0 +1,97 @@
+.section {
+  padding: clamp(4rem, 8vw, 7rem) clamp(1.5rem, 5vw, 4rem);
+}
+
+.inner {
+  max-width: var(--max-width);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
+.heading {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.heading span {
+  color: var(--accent-teal);
+  font-style: italic;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.agent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.1rem 1.3rem;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  background: transparent;
+  /* Entry animation state: hidden slightly below */
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity 0.45s ease,
+    transform 0.45s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    background 0.3s ease;
+}
+
+/* Once intersected: fade in and glow */
+.agent.active {
+  opacity: 1;
+  transform: translateY(0);
+  border-color: var(--accent-teal);
+  background: color-mix(in srgb, var(--accent-teal) 6%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent-teal) 25%, transparent);
+}
+
+.agentNum {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted, var(--text-tertiary));
+  letter-spacing: 0.1em;
+}
+
+.agent.active .agentNum {
+  color: var(--accent-teal);
+}
+
+.agentName {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+
+.agentDesc {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+/* Reduced motion: show all cards immediately, no transition */
+@media (prefers-reduced-motion: reduce) {
+  .agent {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .agent.active {
+    transform: none;
+  }
+}
