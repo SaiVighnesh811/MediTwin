@@ -28,8 +28,9 @@ describe('Chapter 14, 14b & 14c: AnalysisResultView Component Tests', () => {
 
     render(<AnalysisResultView data={mockLowReliabilityResponse} />);
 
-    // 1. Reliability banner is rendered
-    expect(screen.getByText(/Reliability Assessment: low/i)).toBeTruthy();
+    // 1. Reliability banner is rendered with "Input completeness" wording
+    expect(screen.getByText(/Input completeness: low/i)).toBeTruthy();
+    expect(screen.getByText(/describes how many inputs were available/i)).toBeTruthy();
     expect(screen.getByText(/fewer than 9/i)).toBeTruthy();
 
     // 2. Muted format is rendered, NOT confident label
@@ -339,5 +340,107 @@ describe('Chapter 14, 14b & 14c: AnalysisResultView Component Tests', () => {
     expect(screen.queryByText('Epidemiological Risk Stratification')).toBeNull();
     expect(screen.queryByText(/Model Explainability/i)).toBeNull();
     expect(screen.queryByText(/Document Extraction/i)).toBeNull();
+  });
+
+  it('12. renders Document Extraction card with "No document uploaded" when empty, and extracted items when present', () => {
+    // 1. Empty OCR
+    const mockEmpty = {
+      type: 'analyze',
+      result: {
+        risk_assessment: { predicted_class: 'Low', probabilities: { Low: 0.9, Medium: 0.05, High: 0.05 } },
+        reliability: { level: 'high', reasons: [] },
+      },
+    };
+    const { rerender } = render(<AnalysisResultView data={mockEmpty} />);
+    expect(screen.getByText('Document Extraction (Prescription & Lab OCR)')).toBeTruthy();
+    expect(screen.getByText(/No document uploaded/i)).toBeTruthy();
+
+    // 2. Populated OCR
+    const mockPopulated = {
+      type: 'analyze',
+      result: {
+        risk_assessment: { predicted_class: 'Low', probabilities: { Low: 0.9, Medium: 0.05, High: 0.05 } },
+        reliability: { level: 'high', reasons: [] },
+        ocr_findings: {
+          extracted: [
+            { type: 'prescription', medicine: 'Amlodipine', dosage: '500 mg', frequency: 'once daily' },
+            { type: 'lab', test: 'HbA1c', value: '7.2', unit: '%' },
+          ],
+        },
+      },
+    };
+    rerender(<AnalysisResultView data={mockPopulated} />);
+    expect(screen.getByText('Amlodipine')).toBeTruthy();
+    expect(screen.getByText(/500 mg/)).toBeTruthy();
+    expect(screen.getByText('HbA1c')).toBeTruthy();
+    expect(screen.getByText(/7\.2 %/)).toBeTruthy();
+  });
+
+  it('13. renders Biomedical Entities with merged words, grouped into categories, and Denied tag', () => {
+    const mockNlp = {
+      type: 'analyze',
+      result: {
+        risk_assessment: { predicted_class: 'Low', probabilities: { Low: 0.9, Medium: 0.05, High: 0.05 } },
+        reliability: { level: 'high', reasons: [] },
+        nlp_entities: {
+          diseases: [
+            { text: 'hypertension', start: 0, end: 12, negated: false },
+            { text: 'diabetes', start: 20, end: 28, negated: true },
+          ],
+          medications: [
+            { text: 'cho', start: 50, end: 53, negated: false },
+            { text: '##les', start: 53, end: 56, negated: false },
+            { text: '##terol', start: 56, end: 61, negated: false },
+          ],
+        },
+      },
+    };
+
+    render(<AnalysisResultView data={mockNlp} />);
+    expect(screen.getByText('Biomedical Entities (Clinical Notes NER)')).toBeTruthy();
+    expect(screen.getByText('Conditions (2)')).toBeTruthy();
+    expect(screen.getByText('hypertension')).toBeTruthy();
+    expect(screen.getByText('diabetes')).toBeTruthy();
+    // Denied tag rendered on negated entity
+    expect(screen.getByText('Denied')).toBeTruthy();
+    // Merged subword medication rendered
+    expect(screen.getByText('cholesterol')).toBeTruthy();
+  });
+
+  it('15. adult CXR score of 0.061 (6.1%) displays "Score below the model\'s operating point"', () => {
+    const mockAdultBelow = {
+      type: 'image',
+      result: {
+        model_name: 'densenet121-res224-all',
+        model_used: 'adult_torchxrayvision_densenet121_all',
+        population: 'Adult chest X-rays',
+        pneumonia_score: 0.061,
+        pneumonia_op_thresh: 0.0568,
+      },
+    };
+
+    render(<AnalysisResultView data={mockAdultBelow} />);
+    expect(screen.getByText(/Score below the model's operating point/i)).toBeTruthy();
+    expect(screen.queryByText(/Score above the model's operating point/i)).toBeNull();
+  });
+
+  it('16. renders "dose not read" when medicine dosage is null in document OCR card', () => {
+    const mockOcrNoDose = {
+      type: 'analyze',
+      result: {
+        risk_assessment: { predicted_class: 'Low', probabilities: { Low: 0.9, Medium: 0.05, High: 0.05 } },
+        reliability: { level: 'high', reasons: [] },
+        ocr_findings: {
+          medicines: [
+            { medicine: 'Metformin', dosage: null, frequency: 'twice daily', duration: '30 days' },
+          ],
+        },
+      },
+    };
+
+    render(<AnalysisResultView data={mockOcrNoDose} />);
+    expect(screen.getByText('Read automatically from the image. Check against the original document.')).toBeTruthy();
+    expect(screen.getByText('Metformin')).toBeTruthy();
+    expect(screen.getByText(/dose not read/i)).toBeTruthy();
   });
 });

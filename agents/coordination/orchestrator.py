@@ -25,6 +25,7 @@ import os
 import sys
 import time
 import json
+import logging
 import traceback
 from typing import Any, Dict, List, Optional
 import pandas as pd
@@ -33,6 +34,9 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 sys.path.insert(0, PROJECT_ROOT)
 
 from utils.inference_lock import INFERENCE_LOCK
+
+logger = logging.getLogger("meditwin.orchestrator")
+logger.setLevel(logging.INFO)
 
 BRFSS_FEATURES = [
     'HighBP', 'HighChol', 'CholCheck', 'BMI', 'Smoker', 'Stroke',
@@ -74,6 +78,7 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
     agent_status: Dict[str, str] = {}
     agent_timing: Dict[str, float] = {}
     errors: Dict[str, str] = {}
+    agent_errors: Dict[str, str] = {}
 
     context: Dict[str, Any] = {
         "case_input": case,
@@ -102,6 +107,7 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
     # 2. OCR Agent
     # -------------------------------------------------------------
     t0 = time.time()
+    logger.info("[START] ocr_agent")
     try:
         from agents.ocr_agent.ocr_agent import extract_fields, read_printed
         ocr_results = []
@@ -125,14 +131,37 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
             adapt_ocr_result(patient_id, parsed_lab, timestamp=timestamp, memory_agent=mem_agent, raw_text=lab_text)
 
         if ocr_results:
-            context["ocr"] = {"extracted": ocr_results}
+            all_medicines = []
+            all_labs = []
+            raw_texts = []
+            all_extracted = []
+            for r in ocr_results:
+                if isinstance(r, dict):
+                    all_medicines.extend(r.get("medicines", []))
+                    all_labs.extend(r.get("labs", []))
+                    if r.get("raw_text"):
+                        raw_texts.append(r["raw_text"])
+                    if "extracted" in r and isinstance(r["extracted"], list):
+                        all_extracted.extend(r["extracted"])
+                    else:
+                        all_extracted.append(r)
+            context["ocr"] = {
+                "medicines": all_medicines,
+                "labs": all_labs,
+                "raw_text": "\n".join(raw_texts),
+                "extracted": all_extracted,
+            }
             agent_status["ocr_agent"] = "ok"
         else:
             agent_status["ocr_agent"] = "skipped (no input)"
     except Exception as e:
         agent_status["ocr_agent"] = "failed"
+        reason = f"{type(e).__name__}: {str(e)[:120]}"
+        agent_errors["ocr_agent"] = reason
         errors["ocr_agent"] = str(e)
+        logger.error(f"[FAIL] ocr_agent: {reason}", exc_info=True)
     agent_timing["ocr_agent"] = round(time.time() - t0, 3)
+    logger.info(f"[END] ocr_agent in {agent_timing['ocr_agent']}s (status: {agent_status.get('ocr_agent', 'unknown')})")
 
     # -------------------------------------------------------------
     # 3. NLP Agent
@@ -140,6 +169,7 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
     t0 = time.time()
     notes = case.get("clinical_notes")
     if notes:
+        logger.info("[START] nlp_agent")
         try:
             from agents.nlp_agent.nlp_agent import extract_entities
             nlp_res = extract_entities(notes)
@@ -148,16 +178,21 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
             agent_status["nlp_agent"] = "ok"
         except Exception as e:
             agent_status["nlp_agent"] = "failed"
+            reason = f"{type(e).__name__}: {str(e)[:120]}"
+            agent_errors["nlp_agent"] = reason
             errors["nlp_agent"] = str(e)
+            logger.error(f"[FAIL] nlp_agent: {reason}", exc_info=True)
     else:
         agent_status["nlp_agent"] = "skipped (no input)"
     agent_timing["nlp_agent"] = round(time.time() - t0, 3)
+    logger.info(f"[END] nlp_agent in {agent_timing['nlp_agent']}s (status: {agent_status.get('nlp_agent', 'unknown')})")
 
     # -------------------------------------------------------------
     # 4. Medical Image Agent
     # -------------------------------------------------------------
     t0 = time.time()
     xray_path = case.get("chest_xray_path")
+    logger.info("[START] medical_image_agent")
     if xray_path and os.path.exists(xray_path):
         try:
             age_years = case.get("patient_age_years")
@@ -187,31 +222,44 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
             agent_status["medical_image_agent"] = "ok"
         except Exception as e:
             agent_status["medical_image_agent"] = "failed"
+            reason = f"{type(e).__name__}: {str(e)[:120]}"
+            agent_errors["medical_image_agent"] = reason
             errors["medical_image_agent"] = str(e)
+            logger.error(f"[FAIL] medical_image_agent: {reason}", exc_info=True)
     elif xray_path:
         agent_status["medical_image_agent"] = "failed (file not found)"
+        reason = "FileNotFoundError: Chest X-ray file not found"
+        agent_errors["medical_image_agent"] = reason
         errors["medical_image_agent"] = f"Path does not exist: {xray_path}"
+        logger.error(f"[FAIL] medical_image_agent: {reason}")
     else:
         agent_status["medical_image_agent"] = "skipped (no input)"
     agent_timing["medical_image_agent"] = round(time.time() - t0, 3)
+    logger.info(f"[END] medical_image_agent in {agent_timing['medical_image_agent']}s (status: {agent_status.get('medical_image_agent', 'unknown')})")
 
     # -------------------------------------------------------------
     # 5. Patient Memory Summary Refresh (Before Risk so Assembler has memory)
     # -------------------------------------------------------------
     t0 = time.time()
+    logger.info("[START] patient_memory_agent")
     try:
         mem_summary = mem_agent.summary(patient_id)
         context["patient_memory"] = mem_summary
         agent_status["patient_memory_agent"] = "ok"
     except Exception as e:
         agent_status["patient_memory_agent"] = "failed"
+        reason = f"{type(e).__name__}: {str(e)[:120]}"
+        agent_errors["patient_memory_agent"] = reason
         errors["patient_memory_agent"] = str(e)
+        logger.error(f"[FAIL] patient_memory_agent: {reason}", exc_info=True)
     agent_timing["patient_memory_agent"] = round(time.time() - t0, 3)
+    logger.info(f"[END] patient_memory_agent in {agent_timing['patient_memory_agent']}s (status: {agent_status.get('patient_memory_agent', 'unknown')})")
 
     # -------------------------------------------------------------
     # 6. Feature Assembler, Risk Prediction & XAI Agents
     # -------------------------------------------------------------
     t0 = time.time()
+    logger.info("[START] risk_and_xai")
     profile = case.get("patient_profile")
     try:
         from agents.coordination.feature_assembler import assemble_features
@@ -270,13 +318,18 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
     except Exception as e:
         agent_status["risk_agent"] = "failed"
         agent_status["xai_agent"] = "failed"
+        reason = f"{type(e).__name__}: {str(e)[:120]}"
+        agent_errors["risk_and_xai"] = reason
         errors["risk_and_xai"] = str(e)
+        logger.error(f"[FAIL] risk_and_xai: {reason}", exc_info=True)
     agent_timing["risk_and_xai"] = round(time.time() - t0, 3)
+    logger.info(f"[END] risk_and_xai in {agent_timing['risk_and_xai']}s (status: {agent_status.get('risk_agent', 'unknown')})")
 
     # -------------------------------------------------------------
     # 7. Recommendation Agent
     # -------------------------------------------------------------
     t0 = time.time()
+    logger.info("[START] recommendation_agent")
     try:
         from agents.recommendation_agent.recommendation_agent import RecommendationAgent
         rec_agent = RecommendationAgent()
@@ -294,8 +347,12 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
         agent_status["recommendation_agent"] = "ok"
     except Exception as e:
         agent_status["recommendation_agent"] = "failed"
+        reason = f"{type(e).__name__}: {str(e)[:120]}"
+        agent_errors["recommendation_agent"] = reason
         errors["recommendation_agent"] = str(e)
+        logger.error(f"[FAIL] recommendation_agent: {reason}", exc_info=True)
     agent_timing["recommendation_agent"] = round(time.time() - t0, 3)
+    logger.info(f"[END] recommendation_agent in {agent_timing['recommendation_agent']}s (status: {agent_status.get('recommendation_agent', 'unknown')})")
 
     total_time = round(time.time() - t_start, 3)
     peak_rss = round(_get_peak_rss_mb(), 2)
@@ -312,6 +369,7 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
         "total_time_seconds": total_time,
         "peak_rss_mb": peak_rss,
         "errors": errors,
+        "agent_errors": agent_errors,
         "context": context,
         "summary": summary_text,
     }

@@ -39,7 +39,7 @@ export async function api(path, opts = {}, flags = {}) {
   } catch (err) {
     if (timeoutId) clearTimeout(timeoutId);
     if (err.name === 'AbortError') {
-      const timeoutErr = new Error('The analysis took too long');
+      const timeoutErr = new Error('The analysis took too long, probably because the models are still loading. Please retry in a minute.');
       timeoutErr.status = 504;
       throw timeoutErr;
     }
@@ -62,8 +62,8 @@ export async function api(path, opts = {}, flags = {}) {
 
     if (!message) {
       if (res.status === 502) message = 'The analysis service is unavailable, try again';
-      else if (res.status === 503) message = 'The analysis service is busy, retry in a moment';
-      else if (res.status === 504) message = 'The analysis took too long';
+      else if (res.status === 503) message = 'The analysis service is busy with another analysis. Please retry shortly.';
+      else if (res.status === 504) message = 'The analysis took too long, probably because the models are still loading. Please retry in a minute.';
       else if (res.status === 429) message = 'Too many analyses, wait a few minutes';
       else message = `Request failed (${res.status})`;
     }
@@ -78,7 +78,7 @@ export async function api(path, opts = {}, flags = {}) {
 }
 
 export const analysisAPI = {
-  analyze: (formData) => api('/api/analysis/analyze', { method: 'POST', body: formData }, { timeoutMs: 140000 }),
+  analyze: (formData) => api('/api/analysis/analyze', { method: 'POST', body: formData }, { timeoutMs: 260000 }),
   image: (formData) => api('/api/analysis/image', { method: 'POST', body: formData }, { timeoutMs: 140000 }),
   list: (page = 1, limit = 20) => api(`/api/analysis?page=${page}&limit=${limit}`),
   get: (id) => api(`/api/analysis/${id}`),

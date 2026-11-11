@@ -263,37 +263,55 @@
 
 /* Chips for NLP */
 .entityChip {
-  display: inline-block;
-  padding: 0.2rem 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.6rem;
   margin: 0.2rem;
   border-radius: var(--radius-sm);
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-family: var(--font-mono);
   border: 1px solid;
 }
 
-.chip_DISEASE {
+.chip_DISEASE,
+.chip_Condition {
   background: rgba(244, 63, 94, 0.15);
   border-color: var(--accent-rose);
   color: #fda4af;
 }
 
-.chip_SYMPTOM {
+.chip_SYMPTOM,
+.chip_Symptom {
   background: rgba(245, 158, 11, 0.15);
   border-color: var(--accent-amber);
   color: #fde68a;
 }
 
-.chip_MEDICATION {
+.chip_MEDICATION,
+.chip_Medication {
   background: rgba(94, 234, 212, 0.15);
   border-color: var(--accent-teal);
   color: #a7f3d0;
 }
 
-.chip_PROCEDURE {
+.chip_PROCEDURE,
+.chip_Procedure {
   background: rgba(56, 189, 248, 0.15);
   border-color: var(--accent-blue);
   color: #bae6fd;
+}
+
+.negatedTag {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  background: rgba(244, 63, 94, 0.3);
+  color: #ffe4e6;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 

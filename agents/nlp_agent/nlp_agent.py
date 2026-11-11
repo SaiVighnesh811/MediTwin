@@ -33,7 +33,7 @@ if PROJECT_ROOT not in sys.path:
 import torch
 torch.set_num_threads(1)
 import numpy as np
-from transformers import AutoTokenizer, AutoModelForTokenClassification
+from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
 
 from utils.inference_lock import INFERENCE_LOCK
 
@@ -93,12 +93,13 @@ def check_negation(text: str, start: int, max_words_before: int = 5) -> bool:
 # ── Module-level cached model (lazy singleton) ─────────────────────────────────
 _model     = None
 _tokenizer = None
+_pipeline  = None
 
 
 def _load():
     """Load pretrained DistilBERT token classifier locally on CPU."""
-    global _model, _tokenizer
-    if _model is not None:
+    global _model, _tokenizer, _pipeline
+    if _pipeline is not None:
         return
     if not os.path.exists(MODEL_PATH):
         raise FileNotFoundError(
@@ -112,6 +113,13 @@ def _load():
             MODEL_PATH, local_files_only=True, use_safetensors=True
         )
         _model.eval()
+        _pipeline = pipeline(
+            "token-classification",
+            model=_model,
+            tokenizer=_tokenizer,
+            aggregation_strategy="max",
+            stride=128,
+        )
     except Exception as e:
         raise RuntimeError(f"Failed to load NLP model from {MODEL_PATH}: {e}")
 
@@ -149,75 +157,19 @@ def extract_entities(text: str) -> dict:
     _load()
 
     with INFERENCE_LOCK:
-        # Tokenize with sliding window for texts longer than 256 tokens
-        enc = _tokenizer(
-            text,
-            return_offsets_mapping=True,
-            return_overflowing_tokens=True,
-            max_length=256,
-            stride=128,
-            truncation=True,
-            return_tensors="pt",
-        )
-        offset_mappings = enc.pop("offset_mapping")
-        if "overflow_to_sample_mapping" in enc:
-            enc.pop("overflow_to_sample_mapping")
+        raw_output = _pipeline(text)
 
-        raw_entities = []
-        with torch.inference_mode():
-            num_chunks = len(offset_mappings)
-            for i in range(num_chunks):
-                batch_item = {k: v[i:i+1] for k, v in enc.items()}
-                logits = _model(**batch_item).logits[0]
-                probs = torch.softmax(logits, dim=-1)
-                preds = probs.argmax(dim=-1).tolist()
-                confs = probs.max(dim=-1).values.tolist()
-                offsets = offset_mappings[i].tolist()
-
-                curr_type, curr_start, curr_end, curr_confs = None, None, None, []
-
-                for (s, e), pid, conf in zip(offsets, preds, confs):
-                    if s == e:
-                        if curr_type is not None:
-                            raw_entities.append((curr_start, curr_end, curr_type, float(np.mean(curr_confs))))
-                            curr_type, curr_start, curr_end, curr_confs = None, None, None, []
-                        continue
-
-                    lbl = _model.config.id2label[pid]
-                    if lbl == "O":
-                        if curr_type is not None:
-                            raw_entities.append((curr_start, curr_end, curr_type, float(np.mean(curr_confs))))
-                            curr_type, curr_start, curr_end, curr_confs = None, None, None, []
-                        continue
-
-                    pfx, etype = lbl.split("-", 1)
-                    if curr_type is not None:
-                        # Continue existing entity if same type (I-tag or adjacent sub-token B-tag)
-                        if (pfx == "I" and etype == curr_type) or (pfx == "B" and etype == curr_type and s == curr_end):
-                            curr_end = e
-                            curr_confs.append(conf)
-                            continue
-                        else:
-                            raw_entities.append((curr_start, curr_end, curr_type, float(np.mean(curr_confs))))
-                            curr_type, curr_start, curr_end, curr_confs = None, None, None, []
-
-                    curr_type = etype
-                    curr_start = s
-                    curr_end = e
-                    curr_confs = [conf]
-
-                if curr_type is not None:
-                    raw_entities.append((curr_start, curr_end, curr_type, float(np.mean(curr_confs))))
-
-    # Deduplicate overlapping entities across sliding-window chunks
-    raw_entities.sort(key=lambda x: (x[0], -(x[1] - x[0]), -x[3]))
-    deduped = []
-    seen_spans = set()
-    for s, e, et, c in raw_entities:
-        span_key = (s, e, et)
-        if span_key not in seen_spans:
-            seen_spans.add(span_key)
-            deduped.append((s, e, et, c))
+    # Merge adjacent same-label pieces
+    merged = []
+    for ent in raw_output:
+        if merged and merged[-1]["entity_group"] == ent["entity_group"] and ent["start"] <= merged[-1]["end"] + 1:
+            gap = text[merged[-1]["end"]:ent["start"]]
+            if gap in ("", " "):
+                prev = merged[-1]
+                prev["end"] = ent["end"]
+                prev["score"] = max(float(prev["score"]), float(ent["score"]))
+                continue
+        merged.append(dict(ent))
 
     # Format result structure
     result = {
@@ -229,15 +181,18 @@ def extract_entities(text: str) -> dict:
         "entities": [],
     }
 
-    for s, e, et, c in deduped:
+    for item in merged:
+        s = int(item["start"])
+        e = int(item["end"])
         span_text = text[s:e].strip()
-        grp = GROUP_MAP.get(et, "OTHER")
+        etype = item["entity_group"]
+        grp = GROUP_MAP.get(etype, "OTHER")
         negated = check_negation(text, s)
         structured_item = {
             "text": span_text,
-            "entity_type": et,
+            "entity_type": etype,
             "group": grp,
-            "confidence": round(float(c), 4),
+            "confidence": round(float(item["score"]), 4),
             "start": s,
             "end": e,
             "negated": negated,

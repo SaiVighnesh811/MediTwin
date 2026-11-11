@@ -3,7 +3,9 @@ MediTwin ML Service — FastAPI Entrypoint (Chapter 12)
 """
 import time
 import uuid
+import asyncio
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -26,10 +28,27 @@ handler.setFormatter(RequestIdFormatter("%(asctime)s [%(levelname)s] [ReqID: %(r
 logger.handlers = [handler]
 logger.propagate = False
 
+# Ensure orchestrator logs ([START], [END], [FAIL]) print to console and propagate for tests
+orch_logger = logging.getLogger("meditwin.orchestrator")
+orch_logger.setLevel(logging.INFO)
+orch_logger.handlers = [handler]
+orch_logger.propagate = True
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Start background warm-up on startup; nothing needed on shutdown."""
+    from ml_service.inference import start_warmup_task
+    start_warmup_task()
+    logger.info("[STARTUP] Background model warm-up task scheduled")
+    yield
+
+
 app = FastAPI(
     title="MediTwin ML Service",
     description="Internal machine learning microservice serving MediTwin multi-agent diagnostic & screening models.",
     version="1.0.0",
+    lifespan=lifespan,
     docs_url="/docs" if ML_DEBUG else None,
     redoc_url=None,
     openapi_url="/openapi.json" if ML_DEBUG else None,

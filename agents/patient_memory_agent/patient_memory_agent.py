@@ -179,34 +179,61 @@ class PatientMemoryAgent:
     def summary(self, patient_id: str) -> Dict[str, Any]:
         """Provides an aggregated clinical overview of patient history."""
         timeline = self.get_timeline(patient_id)
-        diagnoses = set()
-        symptoms = set()
-        medications = set()
+        diagnoses = {}
+        symptoms = {}
+        medications = {}
         latest_labs: Dict[str, Any] = {}
         imaging_history: List[Dict[str, Any]] = []
         risk_assessments: List[Dict[str, Any]] = []
+
+        def _clean_val(v):
+            if v is None:
+                return None
+            if isinstance(v, dict):
+                if v.get("negated"):
+                    return None
+                val = v.get("text") or v.get("name") or v.get("diagnosis") or v.get("symptom") or v.get("medicine")
+                return str(val).strip() if val else None
+            s = str(v).strip()
+            if s.startswith("{") and ("text" in s or "medicine" in s):
+                try:
+                    import ast
+                    parsed = ast.literal_eval(s)
+                    if isinstance(parsed, dict):
+                        if parsed.get("negated"):
+                            return None
+                        val = parsed.get("text") or parsed.get("name") or parsed.get("medicine")
+                        return str(val).strip() if val else None
+                except Exception:
+                    pass
+            return s if s else None
 
         for ev in timeline:
             etype = ev.get("event_type")
             d = ev.get("data", {})
             if etype == "diagnosis":
-                name = d.get("diagnosis") or d.get("name")
-                if name:
-                    diagnoses.add(str(name))
+                raw = d.get("diagnosis") or d.get("name")
+                clean = _clean_val(raw)
+                if clean and clean.lower() not in diagnoses:
+                    diagnoses[clean.lower()] = clean
             elif etype == "symptom":
-                sym = d.get("symptom") or d.get("name")
-                if sym:
-                    symptoms.add(str(sym))
+                raw = d.get("symptom") or d.get("name")
+                clean = _clean_val(raw)
+                if clean and clean.lower() not in symptoms:
+                    symptoms[clean.lower()] = clean
             elif etype == "medication":
-                med = d.get("medicine") or d.get("name")
-                if med:
-                    medications.add(str(med))
+                raw = d.get("medicine") or d.get("name")
+                clean = _clean_val(raw)
+                if clean and clean.lower() not in medications:
+                    medications[clean.lower()] = clean
             elif etype == "lab_value":
                 tname = d.get("test")
                 if tname:
                     latest_labs[str(tname)] = {
                         "value": d.get("value"),
                         "unit": d.get("unit"),
+                        "reference": d.get("reference"),
+                        "flag": d.get("flag"),
                         "timestamp": ev.get("timestamp"),
                     }
             elif etype == "imaging_finding":
@@ -225,9 +252,10 @@ class PatientMemoryAgent:
         return {
             "patient_id": patient_id,
             "total_events": len(timeline),
-            "diagnoses": sorted(list(diagnoses)),
-            "symptoms": sorted(list(symptoms)),
-            "medications": sorted(list(medications)),
+            "diagnoses": sorted(list(diagnoses.values())),
+            "conditions": sorted(list(diagnoses.values())),
+            "symptoms": sorted(list(symptoms.values())),
+            "medications": sorted(list(medications.values())),
             "latest_labs": latest_labs,
             "imaging_findings": imaging_history[-3:],  # last 3
             "latest_risk": risk_assessments[-1] if risk_assessments else None,
@@ -248,13 +276,47 @@ def adapt_ocr_result(
 ) -> List[Dict[str, Any]]:
     """
     Turns OCR extract_fields dictionary into timeline events.
-    Missing/None fields are skipped and recorded as 'field_missing'.
-    If medicine is None in a prescription, runs the NLP agent fallback on raw_text
-    (or ocr_result.get('_raw_text')) to extract MEDICATION entities, recording source='nlp_fallback'.
-    Unknown date defaults to ingest time with date_uncertain=True.
+    Supports multi-item medicines[] and labs[] from line-by-line parsing,
+    as well as single-item prescription/lab outputs.
     """
     mem = memory_agent or PatientMemoryAgent()
     events_added = []
+
+    # Handle multi-item medicines[] and labs[] if present
+    has_multi = False
+    if "labs" in ocr_result and isinstance(ocr_result["labs"], list):
+        for lab in ocr_result["labs"]:
+            test_val = lab.get("test")
+            val = lab.get("value")
+            if test_val and val:
+                has_multi = True
+                payload = {
+                    "test": test_val,
+                    "value": val,
+                    "unit": lab.get("unit"),
+                    "reference": lab.get("reference"),
+                    "flag": lab.get("flag"),
+                }
+                ev = mem.add_event(patient_id, "lab_value", payload, timestamp=timestamp, source=source)
+                events_added.append(ev)
+
+    if "medicines" in ocr_result and isinstance(ocr_result["medicines"], list):
+        for med_item in ocr_result["medicines"]:
+            med = med_item.get("medicine")
+            if med:
+                has_multi = True
+                payload = {
+                    "medicine": med,
+                    "dosage": med_item.get("dosage"),
+                    "frequency": med_item.get("frequency"),
+                    "duration": med_item.get("duration"),
+                }
+                ev = mem.add_event(patient_id, "medication", payload, timestamp=timestamp, source=source)
+                events_added.append(ev)
+
+    if has_multi:
+        return events_added
+
     doc_type = ocr_result.get("type")
 
     # Determine input text for fallback
@@ -288,6 +350,7 @@ def adapt_ocr_result(
                 "value": val,
                 "unit": ocr_result.get("unit"),
                 "reference": ocr_result.get("reference"),
+                "flag": ocr_result.get("flag"),
             }
             ev = mem.add_event(patient_id, "lab_value", payload, timestamp=timestamp, source=source)
             events_added.append(ev)
@@ -352,25 +415,55 @@ def adapt_nlp_result(
     """
     Turns NLP extract_entities dictionary into diagnosis, symptom, medication,
     and procedure timeline events.
+    Stores clean string names only (extracts text from dict entities), skips negated
+    entities, and deduplicates case-insensitively.
     """
     mem = memory_agent or PatientMemoryAgent()
     events_added = []
 
-    for disease in nlp_result.get("diseases", []):
-        ev = mem.add_event(patient_id, "diagnosis", {"diagnosis": disease}, timestamp=timestamp, source=source)
-        events_added.append(ev)
+    def _clean_name(entity: Any) -> Optional[str]:
+        if entity is None:
+            return None
+        if isinstance(entity, dict):
+            if entity.get("negated"):
+                return None
+            val = entity.get("text") or entity.get("name") or entity.get("diagnosis") or entity.get("symptom") or entity.get("medicine")
+            return str(val).strip() if val else None
+        s = str(entity).strip()
+        return s if s else None
 
-    for symptom in nlp_result.get("symptoms", []):
-        ev = mem.add_event(patient_id, "symptom", {"symptom": symptom}, timestamp=timestamp, source=source)
-        events_added.append(ev)
-
+    # Medications
+    seen_meds = set()
     for medication in nlp_result.get("medications", []):
-        ev = mem.add_event(patient_id, "medication", {"medicine": medication}, timestamp=timestamp, source=source)
-        events_added.append(ev)
+        clean = _clean_name(medication)
+        if clean and clean.lower() not in seen_meds:
+            seen_meds.add(clean.lower())
+            ev = mem.add_event(patient_id, "medication", {"medicine": clean}, timestamp=timestamp, source=source)
+            events_added.append(ev)
+
+    # Diagnoses / Conditions
+    seen_diag = set()
+    for disease in nlp_result.get("diseases", []) + nlp_result.get("history", []):
+        clean = _clean_name(disease)
+        if clean and clean.lower() not in seen_diag:
+            seen_diag.add(clean.lower())
+            ev = mem.add_event(patient_id, "diagnosis", {"diagnosis": clean}, timestamp=timestamp, source=source)
+            events_added.append(ev)
+
+    # Symptoms
+    seen_symp = set()
+    for symptom in nlp_result.get("symptoms", []):
+        clean = _clean_name(symptom)
+        if clean and clean.lower() not in seen_symp:
+            seen_symp.add(clean.lower())
+            ev = mem.add_event(patient_id, "symptom", {"symptom": clean}, timestamp=timestamp, source=source)
+            events_added.append(ev)
 
     for procedure in nlp_result.get("procedures", []):
-        ev = mem.add_event(patient_id, "document", {"procedure": procedure}, timestamp=timestamp, source=source)
-        events_added.append(ev)
+        clean = _clean_name(procedure)
+        if clean:
+            ev = mem.add_event(patient_id, "document", {"procedure": clean}, timestamp=timestamp, source=source)
+            events_added.append(ev)
 
     return events_added
 

@@ -199,7 +199,7 @@ describe('Chapter 13: Analysis Gateway & MongoDB Storage Tests', () => {
       .send({ BMI: 25.0 });
 
     expect(res.status).toBe(504);
-    expect(res.body.error).toMatch(/timed out/i);
+    expect(res.body.error).toMatch(/took too long|timed out/i);
   });
 
   test('8. user A cannot read or delete user B\'s analysis (404, never 403)', async () => {
@@ -358,6 +358,55 @@ describe('Chapter 13: Analysis Gateway & MongoDB Storage Tests', () => {
     expect(saved).not.toBeNull();
     expect(saved.type).toBe('image');
     expect(saved.inputSummary.age_years).toBe(45);
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // Chapter 15a: Honest error message tests
+  // ─────────────────────────────────────────────────────────────
+
+  test('14. /api/analysis/risk returns 503 with busy message when ML service returns 503', async () => {
+    const { cookie } = await createTestUser();
+    simulatedStatus = 503;
+    simulatedResponse = { error: 'The analysis service is busy with another analysis. Please retry shortly.' };
+
+    const res = await request(app)
+      .post('/api/analysis/risk')
+      .set('Cookie', cookie)
+      .send({ BMI: 25.0, Age: 9 });
+
+    expect(res.status).toBe(503);
+    expect(res.body.error).toMatch(/busy with another analysis/i);
+  });
+
+  test('15. /api/analysis/analyze returns 504 with timeout message when ML service returns 504', async () => {
+    const { cookie } = await createTestUser();
+    simulatedStatus = 504;
+    simulatedResponse = { error: 'The analysis took too long, probably because the models are still loading. Please retry in a minute.' };
+
+    const dummyPng = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+    const res = await request(app)
+      .post('/api/analysis/analyze')
+      .set('Cookie', cookie)
+      .field('features', JSON.stringify({ BMI: 25.0, Age: 9, Sex: 1, GenHlth: 3 }));
+
+    expect(res.status).toBe(504);
+    expect(res.body.error).toMatch(/took too long/i);
+  });
+
+  test('16. /api/analysis/risk returns 504 with timeout message when gateway times out (AbortError)', async () => {
+    const { cookie } = await createTestUser();
+    // Set delay longer than 500ms timeout set via ML_TIMEOUT_MS
+    simulatedDelayMs = 600;
+    simulatedStatus = 200;
+
+    const res = await request(app)
+      .post('/api/analysis/risk')
+      .set('Cookie', cookie)
+      .send({ BMI: 25.0, Age: 9 });
+
+    expect(res.status).toBe(504);
+    expect(res.body.error).toMatch(/took too long/i);
   });
 });
 

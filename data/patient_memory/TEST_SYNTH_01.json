@@ -145,6 +145,192 @@
       "timestamp": "2026-11-09T07:51:18.290302+00:00",
       "date_uncertain": true,
       "source": "risk_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": {
+          "text": "Amlodipine",
+          "start": 50,
+          "end": 60,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T10:10:13.062630+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "risk_assessment",
+      "data": {
+        "risk_level": "Medium",
+        "probabilities": {
+          "High": 0.3169,
+          "Low": 0.3122,
+          "Medium": 0.3708
+        },
+        "features_used": 21
+      },
+      "timestamp": "2026-11-10T10:10:51.052862+00:00",
+      "date_uncertain": true,
+      "source": "risk_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": {
+          "text": "Amlodipine",
+          "start": 50,
+          "end": 60,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T10:34:09.458346+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "risk_assessment",
+      "data": {
+        "risk_level": "Medium",
+        "probabilities": {
+          "High": 0.3169,
+          "Low": 0.3122,
+          "Medium": 0.3708
+        },
+        "features_used": 21
+      },
+      "timestamp": "2026-11-10T10:34:30.746005+00:00",
+      "date_uncertain": true,
+      "source": "risk_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": {
+          "text": "Amlodipine",
+          "start": 50,
+          "end": 60,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T15:04:20.639838+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "risk_assessment",
+      "data": {
+        "risk_level": "Medium",
+        "probabilities": {
+          "High": 0.3169,
+          "Low": 0.3122,
+          "Medium": 0.3708
+        },
+        "features_used": 21
+      },
+      "timestamp": "2026-11-10T15:04:37.903217+00:00",
+      "date_uncertain": true,
+      "source": "risk_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": "Amlodipine"
+      },
+      "timestamp": "2026-11-10T16:27:44.097225+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "diagnosis",
+      "data": {
+        "diagnosis": "hypertension"
+      },
+      "timestamp": "2026-11-10T16:27:44.204425+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "risk_assessment",
+      "data": {
+        "risk_level": "Medium",
+        "probabilities": {
+          "High": 0.3169,
+          "Low": 0.3122,
+          "Medium": 0.3708
+        },
+        "features_used": 21
+      },
+      "timestamp": "2026-11-10T16:28:21.633678+00:00",
+      "date_uncertain": true,
+      "source": "risk_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": "Amlodipine"
+      },
+      "timestamp": "2026-11-10T16:33:31.743553+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "diagnosis",
+      "data": {
+        "diagnosis": "hypertension"
+      },
+      "timestamp": "2026-11-10T16:33:31.870303+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "risk_assessment",
+      "data": {
+        "risk_level": "Medium",
+        "probabilities": {
+          "High": 0.3169,
+          "Low": 0.3122,
+          "Medium": 0.3708
+        },
+        "features_used": 21
+      },
+      "timestamp": "2026-11-10T16:33:53.321154+00:00",
+      "date_uncertain": true,
+      "source": "risk_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": "Amlodipine"
+      },
+      "timestamp": "2026-11-11T03:23:08.088098+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "diagnosis",
+      "data": {
+        "diagnosis": "hypertension"
+      },
+      "timestamp": "2026-11-11T03:23:08.110837+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "risk_assessment",
+      "data": {
+        "risk_level": "Medium",
+        "probabilities": {
+          "High": 0.3169,
+          "Low": 0.3122,
+          "Medium": 0.3708
+        },
+        "features_used": 21
+      },
+      "timestamp": "2026-11-11T03:23:29.298637+00:00",
+      "date_uncertain": true,
+      "source": "risk_agent"
     }
   ]
 }

@@ -17,7 +17,7 @@ if PROJECT_ROOT not in sys.path:
 from ml_service.config import DISCLAIMER_TEXT, LIMITATIONS
 from ml_service.security import verify_api_key, validate_and_save_upload
 from ml_service.schemas import RiskRequest, NLPRequest, BRFSSFeatures
-from ml_service.inference import check_loaded_models, run_heavy_inference
+from ml_service.inference import check_loaded_models, run_heavy_inference, is_warming, ANALYZE_TIMEOUT_SECONDS
 
 router = APIRouter()
 
@@ -87,6 +87,7 @@ def health_check():
         "status": "healthy",
         "service": "MediTwin ML Service",
         "version": "1.0.0",
+        "warming": is_warming(),
         "loaded_models": loaded_models,
         "models_info": {
             "risk_prediction": {
@@ -286,7 +287,7 @@ async def analyze_xray(
                     "limitations": result["limitations"],
                 })
 
-        return await run_heavy_inference(_execute)
+        return await run_heavy_inference(_execute, timeout_seconds=ANALYZE_TIMEOUT_SECONDS)
     finally:
         if os.path.exists(temp_path):
             try:
@@ -329,7 +330,7 @@ async def ocr_document(
                 "limitations": LIMITATIONS["ocr"],
             })
 
-        return await run_heavy_inference(_execute)
+        return await run_heavy_inference(_execute, timeout_seconds=ANALYZE_TIMEOUT_SECONDS)
     finally:
         if os.path.exists(temp_path):
             try:
@@ -440,6 +441,7 @@ async def run_full_analysis(
                 "agent_timing_seconds": case_result.get("agent_timing_seconds", {}),
                 "total_time_seconds": case_result.get("total_time_seconds"),
                 "errors": case_result.get("errors", {}),
+                "agent_errors": case_result.get("agent_errors", {}),
                 "risk_assessment": risk_info,
                 "reliability": reliability,
                 "explainability": {
@@ -461,7 +463,7 @@ async def run_full_analysis(
                 "limitations": LIMITATIONS["pipeline"],
             })
 
-        return await run_heavy_inference(_execute)
+        return await run_heavy_inference(_execute, timeout_seconds=ANALYZE_TIMEOUT_SECONDS)
     finally:
         for p in (doc_path, xray_path):
             if p and os.path.exists(p):

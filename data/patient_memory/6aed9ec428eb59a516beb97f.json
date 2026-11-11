@@ -154,6 +154,586 @@
       "timestamp": "2026-11-09T15:19:04.741575+00:00",
       "date_uncertain": true,
       "source": "risk_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": "Amlodipine",
+        "dosage": "500 mg",
+        "frequency": "once daily",
+        "duration": "30 day"
+      },
+      "timestamp": "2026-11-10T09:12:28.283027+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "symptom",
+      "data": {
+        "symptom": {
+          "text": "les",
+          "start": 47,
+          "end": 50,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T09:13:16.689588+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "symptom",
+      "data": {
+        "symptom": {
+          "text": "fatigue",
+          "start": 70,
+          "end": 77,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T09:13:16.691545+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "symptom",
+      "data": {
+        "symptom": {
+          "text": "pain",
+          "start": 147,
+          "end": 151,
+          "negated": true
+        }
+      },
+      "timestamp": "2026-11-10T09:13:16.693271+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": {
+          "text": "Amlodipine",
+          "start": 106,
+          "end": 116,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T09:13:16.694994+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "procedure": {
+          "text": "cho",
+          "start": 44,
+          "end": 47,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T09:13:16.696910+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "procedure": {
+          "text": "terol",
+          "start": 50,
+          "end": 55,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T09:13:16.698726+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "imaging_finding",
+      "data": {
+        "finding": null,
+        "pneumonia_probability": null,
+        "normal_probability": null,
+        "heatmap_path": null,
+        "disclaimer": null
+      },
+      "timestamp": "2026-11-10T09:13:19.773074+00:00",
+      "date_uncertain": true,
+      "source": "medical_image_agent"
+    },
+    {
+      "event_type": "risk_assessment",
+      "data": {
+        "risk_level": "High",
+        "probabilities": {
+          "High": 0.5139,
+          "Low": 0.1225,
+          "Medium": 0.3636
+        },
+        "features_used": 21
+      },
+      "timestamp": "2026-11-10T09:14:14.561996+00:00",
+      "date_uncertain": true,
+      "source": "risk_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": "Amlodipine",
+        "dosage": "500 mg",
+        "frequency": "once daily",
+        "duration": "30 day"
+      },
+      "timestamp": "2026-11-10T09:35:07.196157+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "symptom",
+      "data": {
+        "symptom": {
+          "text": "les",
+          "start": 47,
+          "end": 50,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T09:35:13.417825+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "symptom",
+      "data": {
+        "symptom": {
+          "text": "fatigue",
+          "start": 70,
+          "end": 77,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T09:35:13.420005+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "symptom",
+      "data": {
+        "symptom": {
+          "text": "pain",
+          "start": 147,
+          "end": 151,
+          "negated": true
+        }
+      },
+      "timestamp": "2026-11-10T09:35:13.421339+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": {
+          "text": "Amlodipine",
+          "start": 106,
+          "end": 116,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T09:35:13.422542+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "procedure": {
+          "text": "cho",
+          "start": 44,
+          "end": 47,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T09:35:13.423817+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "procedure": {
+          "text": "terol",
+          "start": 50,
+          "end": 55,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T09:35:13.487583+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "imaging_finding",
+      "data": {
+        "finding": null,
+        "pneumonia_probability": null,
+        "normal_probability": null,
+        "heatmap_path": null,
+        "disclaimer": null
+      },
+      "timestamp": "2026-11-10T09:35:14.703034+00:00",
+      "date_uncertain": true,
+      "source": "medical_image_agent"
+    },
+    {
+      "event_type": "risk_assessment",
+      "data": {
+        "risk_level": "High",
+        "probabilities": {
+          "High": 0.5139,
+          "Low": 0.1225,
+          "Medium": 0.3636
+        },
+        "features_used": 21
+      },
+      "timestamp": "2026-11-10T09:35:25.476547+00:00",
+      "date_uncertain": true,
+      "source": "risk_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": "Amlodipine",
+        "dosage": "500 mg",
+        "frequency": "once daily",
+        "duration": "30 day"
+      },
+      "timestamp": "2026-11-10T09:48:58.156472+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "symptom",
+      "data": {
+        "symptom": {
+          "text": "les",
+          "start": 47,
+          "end": 50,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T09:49:04.160040+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "symptom",
+      "data": {
+        "symptom": {
+          "text": "fatigue",
+          "start": 70,
+          "end": 77,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T09:49:04.162077+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "symptom",
+      "data": {
+        "symptom": {
+          "text": "pain",
+          "start": 147,
+          "end": 151,
+          "negated": true
+        }
+      },
+      "timestamp": "2026-11-10T09:49:04.163819+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": {
+          "text": "Amlodipine",
+          "start": 106,
+          "end": 116,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T09:49:04.165526+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "procedure": {
+          "text": "cho",
+          "start": 44,
+          "end": 47,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T09:49:04.167165+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "procedure": {
+          "text": "terol",
+          "start": 50,
+          "end": 55,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T09:49:04.168790+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "imaging_finding",
+      "data": {
+        "finding": null,
+        "pneumonia_probability": null,
+        "normal_probability": null,
+        "heatmap_path": null,
+        "disclaimer": null
+      },
+      "timestamp": "2026-11-10T09:49:05.025942+00:00",
+      "date_uncertain": true,
+      "source": "medical_image_agent"
+    },
+    {
+      "event_type": "risk_assessment",
+      "data": {
+        "risk_level": "High",
+        "probabilities": {
+          "High": 0.5139,
+          "Low": 0.1225,
+          "Medium": 0.3636
+        },
+        "features_used": 21
+      },
+      "timestamp": "2026-11-10T09:49:12.944029+00:00",
+      "date_uncertain": true,
+      "source": "risk_agent"
+    },
+    {
+      "event_type": "symptom",
+      "data": {
+        "symptom": {
+          "text": "les",
+          "start": 47,
+          "end": 50,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T12:43:26.133857+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "symptom",
+      "data": {
+        "symptom": {
+          "text": "fatigue",
+          "start": 70,
+          "end": 77,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T12:43:26.254416+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "symptom",
+      "data": {
+        "symptom": {
+          "text": "pain",
+          "start": 147,
+          "end": 151,
+          "negated": true
+        }
+      },
+      "timestamp": "2026-11-10T12:43:26.257542+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": {
+          "text": "Amlodipine",
+          "start": 106,
+          "end": 116,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T12:43:26.259548+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "procedure": {
+          "text": "cho",
+          "start": 44,
+          "end": 47,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T12:43:26.261712+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "procedure": {
+          "text": "terol",
+          "start": 50,
+          "end": 55,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T12:43:26.264369+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "imaging_finding",
+      "data": {
+        "finding": null,
+        "pneumonia_probability": null,
+        "normal_probability": null,
+        "heatmap_path": null,
+        "disclaimer": null
+      },
+      "timestamp": "2026-11-10T12:43:27.224769+00:00",
+      "date_uncertain": true,
+      "source": "medical_image_agent"
+    },
+    {
+      "event_type": "risk_assessment",
+      "data": {
+        "risk_level": "High",
+        "probabilities": {
+          "High": 0.4565,
+          "Low": 0.1433,
+          "Medium": 0.4002
+        },
+        "features_used": 21
+      },
+      "timestamp": "2026-11-10T12:43:54.623788+00:00",
+      "date_uncertain": true,
+      "source": "risk_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": "Amlodipine",
+        "dosage": "500 mg",
+        "frequency": "once daily",
+        "duration": "30 day"
+      },
+      "timestamp": "2026-11-10T15:30:50.382457+00:00",
+      "date_uncertain": true,
+      "source": "ocr_agent"
+    },
+    {
+      "event_type": "symptom",
+      "data": {
+        "symptom": {
+          "text": "fatigue",
+          "start": 70,
+          "end": 77,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T15:30:51.104799+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "symptom",
+      "data": {
+        "symptom": {
+          "text": "pain",
+          "start": 147,
+          "end": 151,
+          "negated": true
+        }
+      },
+      "timestamp": "2026-11-10T15:30:51.106622+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "medication",
+      "data": {
+        "medicine": {
+          "text": "Amlodipine",
+          "start": 106,
+          "end": 116,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T15:30:51.108141+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "document",
+      "data": {
+        "procedure": {
+          "text": "cholesterol",
+          "start": 44,
+          "end": 55,
+          "negated": false
+        }
+      },
+      "timestamp": "2026-11-10T15:30:51.109512+00:00",
+      "date_uncertain": true,
+      "source": "nlp_agent"
+    },
+    {
+      "event_type": "imaging_finding",
+      "data": {
+        "finding": null,
+        "pneumonia_probability": null,
+        "normal_probability": null,
+        "heatmap_path": null,
+        "disclaimer": null
+      },
+      "timestamp": "2026-11-10T15:30:52.104457+00:00",
+      "date_uncertain": true,
+      "source": "medical_image_agent"
+    },
+    {
+      "event_type": "risk_assessment",
+      "data": {
+        "risk_level": "High",
+        "probabilities": {
+          "High": 0.5062,
+          "Low": 0.2244,
+          "Medium": 0.2693
+        },
+        "features_used": 21
+      },
+      "timestamp": "2026-11-10T15:30:54.657944+00:00",
+      "date_uncertain": true,
+      "source": "risk_agent"
     }
   ]
 }

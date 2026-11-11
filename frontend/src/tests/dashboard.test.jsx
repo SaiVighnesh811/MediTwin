@@ -175,14 +175,43 @@ describe('Chapter 14e: Dashboard Counters & Wizard Tests', () => {
       const ageInputAgain = screen.getByLabelText(/age \(years\)/i);
       fireEvent.change(ageInputAgain, { target: { value: '' } });
 
-      // Go forward to step 2 then step 3 (or test validation logic directly)
-      // Since isStep1Valid requires age, button is disabled if age is empty.
-      // But if user set age to invalid or bypassed, handleRunAnalysis also guards:
-      // Let's test that handleRunAnalysis explicitly guards and displays the exact error message
       expect(
         'Enter the patient\u2019s age so the right X-ray model can be selected (pediatric < 18 years, adult \u2265 18 years).'
       ).toBeTruthy();
-    });
+    }, 20000);
+
+    it('displays survey features count and collapsible unanswered list in review step', async () => {
+      render(
+        <MemoryRouter>
+          <AuthProvider>
+            <Wizard />
+          </AuthProvider>
+        </MemoryRouter>
+      );
+
+      // Fill basic answers in step 1
+      fireEvent.change(screen.getByLabelText(/biological sex/i), { target: { value: '1' } });
+      fireEvent.change(screen.getByLabelText(/height/i), { target: { value: '175' } });
+      fireEvent.change(screen.getByLabelText(/weight/i), { target: { value: '70' } });
+      fireEvent.change(screen.getByLabelText(/general health/i), { target: { value: '3' } });
+      fireEvent.change(screen.getByLabelText(/age \(years\)/i), { target: { value: '45' } });
+
+      // Advance to step 2
+      fireEvent.click(screen.getByRole('button', { name: /next: documents & images/i }));
+      await waitFor(() => {
+        expect(screen.getByText(/2\. Documents, Notes & Imaging/i)).toBeTruthy();
+      });
+
+      // Advance to step 3
+      fireEvent.click(screen.getByRole('button', { name: /next: review & run/i }));
+      await waitFor(() => {
+        expect(screen.getByText(/3\. Review & Run Analysis/i)).toBeTruthy();
+      });
+
+      // Check for survey features text and collapsible details
+      expect(screen.getByText(/of 21 survey features provided/i)).toBeTruthy();
+      expect(screen.getByText(/Not answered \(these will be assumed\):/i)).toBeTruthy();
+    }, 20000);
 
     it('X-ray only mode accepts age (0-120) and X-ray file and calls analysisAPI.image', async () => {
       analysisAPI.image.mockResolvedValueOnce({

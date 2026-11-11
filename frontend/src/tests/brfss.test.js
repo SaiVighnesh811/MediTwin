@@ -6,10 +6,15 @@ import {
   formatFeature,
   formatFeatureName,
   formatFeatureInText,
+  formatCondition,
   formatRuleTitle,
   formatCategory,
   parseExplanationItem,
   computeDivergingBars,
+  getGroupedEntities,
+  parseOCRFindings,
+  ALL_BRFSS_KEYS,
+  FEATURE_NAMES,
 } from '../lib/brfss';
 
 describe('Chapter 14 & 14c: BRFSS Conversion, Presentation & Explanation Tests', () => {
@@ -249,5 +254,243 @@ describe('Chapter 14 & 14c: BRFSS Conversion, Presentation & Explanation Tests',
     for (let i = 0; i < bars.length - 1; i++) {
       expect(bars[i].widthPct).toBeGreaterThanOrEqual(bars[i + 1].widthPct);
     }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// Chapter 15a: ALL_BRFSS_KEYS, full payload, MentHlth/PhysHlth edge cases
+// ─────────────────────────────────────────────────────────────
+describe('Chapter 15a: buildBRFSSPayload all 21 features and edge cases', () => {
+  it('9. ALL_BRFSS_KEYS exports exactly 21 keys matching FEATURE_NAMES', () => {
+    expect(ALL_BRFSS_KEYS).toHaveLength(21);
+    // Every key must exist in FEATURE_NAMES
+    ALL_BRFSS_KEYS.forEach((k) => {
+      expect(FEATURE_NAMES[k]).toBeDefined();
+    });
+    // No duplicates
+    expect(new Set(ALL_BRFSS_KEYS).size).toBe(21);
+  });
+
+  it('10. buildBRFSSPayload with all 21 fields answered produces exactly 21 keys', () => {
+    const fullForm = {
+      age: 35,       // -> Age: 4
+      sex: 1,        // -> Sex: 1
+      height: 175,
+      weight: 70,    // -> BMI: 22.9
+      genHlth: 3,    // -> GenHlth: 3
+      HighBP: 1,
+      HighChol: 0,
+      CholCheck: 1,
+      Smoker: 0,
+      Stroke: 0,
+      HeartDiseaseorAttack: 0,
+      PhysActivity: 1,
+      Fruits: 1,
+      Veggies: 1,
+      HvyAlcoholConsump: 0,
+      AnyHealthcare: 1,
+      NoDocbcCost: 0,
+      DiffWalk: 0,
+      mentHlth: 0,   // -> MentHlth: 0  (0 must be valid!)
+      physHlth: 0,   // -> PhysHlth: 0  (0 must be valid!)
+      education: 5,  // -> Education: 5
+      income: 6,     // -> Income: 6
+    };
+
+    const payload = buildBRFSSPayload(fullForm);
+    const keys = Object.keys(payload);
+
+    // Must have exactly 21 keys
+    expect(keys).toHaveLength(21);
+
+    // Spot-check individual values
+    expect(payload.Age).toBe(4);       // 35 -> band 4
+    expect(payload.Sex).toBe(1);
+    expect(payload.BMI).toBe(22.9);
+    expect(payload.GenHlth).toBe(3);
+    expect(payload.HighBP).toBe(1.0);
+    expect(payload.HighChol).toBe(0.0);
+    expect(payload.MentHlth).toBe(0);  // 0 is valid!
+    expect(payload.PhysHlth).toBe(0);  // 0 is valid!
+    expect(payload.Education).toBe(5);
+    expect(payload.Income).toBe(6);
+  });
+
+  it('11. mentHlth/physHlth accept string "0" as 0 (valid, not omitted)', () => {
+    const form = {
+      age: 25, sex: 0, height: 165, weight: 65, genHlth: 2,
+      mentHlth: '0',
+      physHlth: '0',
+    };
+    const payload = buildBRFSSPayload(form);
+    expect(payload.MentHlth).toBe(0);
+    expect(payload.PhysHlth).toBe(0);
+  });
+
+  it('12. mentHlth/physHlth accept both camelCase and PascalCase keys', () => {
+    // PascalCase form (e.g. already-processed data)
+    const formPascal = {
+      Age: 5, Sex: 1, BMI: 25.0, GenHlth: 2,
+      MentHlth: 10,
+      PhysHlth: 5,
+    };
+    const payload = buildBRFSSPayload(formPascal);
+    expect(payload.MentHlth).toBe(10);
+    expect(payload.PhysHlth).toBe(5);
+  });
+
+  it('13. unanswered keys are exactly ALL_BRFSS_KEYS minus answered payload keys', () => {
+    // Only 4 required fields filled
+    const minimalForm = {
+      age: 50, sex: 1, height: 170, weight: 75, genHlth: 4,
+    };
+    const payload = buildBRFSSPayload(minimalForm);
+    const answeredCount = Object.keys(payload).length;
+    expect(answeredCount).toBeLessThan(21);
+
+    const unansweredKeys = ALL_BRFSS_KEYS.filter((k) => !(k in payload));
+    // All unanswered keys must have FEATURE_NAMES labels
+    unansweredKeys.forEach((k) => {
+      expect(FEATURE_NAMES[k]).toBeDefined();
+    });
+    // Total must add up to 21
+    expect(answeredCount + unansweredKeys.length).toBe(21);
+  });
+});
+
+
+// ─────────────────────────────────────────────────────────────
+// Chapter 15b: LIME Condition Formatting, NLP Merging & OCR Extraction
+// ─────────────────────────────────────────────────────────────
+describe('Chapter 15b: LIME Condition Formatting, NLP Merging & OCR Extraction', () => {
+  it('14. formats binary rules (> -> Yes, <= -> No) and non-binary rules cleanly', () => {
+    // Binary: HighBP > 0.00 -> Yes, <= 0.00 -> No
+    expect(formatCondition('HighBP > 0.00')).toBe('High blood pressure: Yes');
+    expect(formatCondition('HighBP <= 0.00')).toBe('High blood pressure: No');
+    expect(formatFeatureInText('HighBP > 0.00')).toBe('High blood pressure: Yes');
+    expect(formatFeatureInText('HighBP <= 0.00')).toBe('High blood pressure: No');
+    expect(formatRuleTitle('HighBP > 0.00')).toBe('High blood pressure: Yes');
+    expect(formatRuleTitle('HighBP <= 0.00')).toBe('High blood pressure: No');
+
+    // Other binary features: Smoker, DiffWalk, HighChol
+    expect(formatCondition('Smoker > 0.00')).toBe('Smoking history: Yes');
+    expect(formatCondition('Smoker <= 0.00')).toBe('Smoking history: No');
+    expect(formatCondition('DiffWalk > 0.00')).toBe('Difficulty walking: Yes');
+    expect(formatCondition('DiffWalk <= 0.00')).toBe('Difficulty walking: No');
+
+    // Non-binary: GenHlth > 3.00, BMI <= 25.00
+    expect(formatCondition('GenHlth > 3.00')).toBe('General health > 3.00');
+    expect(formatFeatureInText('GenHlth > 3.00')).toBe('General health > 3.00');
+    expect(formatRuleTitle('GenHlth > 3.00')).toBe('General health > 3.00');
+    expect(formatCondition('BMI <= 25.00')).toBe('BMI <= 25.00');
+  });
+
+  it('15. LIME sentences close quotes and heading matches sentence text', () => {
+    // Binary condition in LIME sentence
+    const limeItemYes = "Condition 'HighBP > 0.00' pushes toward High risk (LIME weight=+0.1605)";
+    const parsedYes = parseExplanationItem(limeItemYes, 'lime');
+    expect(parsedYes.label).toBe('High blood pressure: Yes');
+    expect(parsedYes.sentence).toBe("Condition 'High blood pressure: Yes' pushes toward High risk (LIME weight=+0.1605)");
+
+    const limeItemNo = "Condition 'HighBP <= 0.00' pushes away from High risk (LIME weight=-0.0500)";
+    const parsedNo = parseExplanationItem(limeItemNo, 'lime');
+    expect(parsedNo.label).toBe('High blood pressure: No');
+    expect(parsedNo.sentence).toBe("Condition 'High blood pressure: No' pushes away from High risk (LIME weight=-0.0500)");
+
+    // Non-binary condition in LIME sentence
+    const limeItemGen = "Condition 'GenHlth > 3.00' pushes toward High risk (LIME weight=+0.1605)";
+    const parsedGen = parseExplanationItem(limeItemGen, 'lime');
+    expect(parsedGen.label).toBe('General health > 3.00');
+    expect(parsedGen.sentence).toBe("Condition 'General health > 3.00' pushes toward High risk (LIME weight=+0.1605)");
+
+    // Handles previously unclosed quote gracefully and closes it
+    const unclosed = "Condition 'High blood pressure: No pushes toward High risk";
+    const formattedUnclosed = formatFeatureInText(unclosed);
+    expect(formattedUnclosed).toBe("Condition 'High blood pressure: No' pushes toward High risk");
+  });
+
+  it('16. getGroupedEntities joins word pieces, hides OTHER, groups into categories, and tags negated entities', () => {
+    const rawNlp = {
+      diseases: [
+        { text: 'hypertension', start: 0, end: 12, negated: false },
+        { text: 'diabetes', start: 20, end: 28, negated: true },
+      ],
+      symptoms: [
+        { text: 'chest', start: 30, end: 35, negated: false },
+        { text: 'pain', start: 36, end: 40, negated: false },
+      ],
+      medications: [
+        { text: 'cho', start: 50, end: 53, negated: false },
+        { text: '##les', start: 53, end: 56, negated: false },
+        { text: '##terol', start: 56, end: 61, negated: false },
+      ],
+      procedures: [
+        { text: 'X-ray', start: 70, end: 75, negated: false },
+      ],
+      entities: [
+        // Subwords
+        { text: 'cho', group: 'MEDICATION', entity_type: 'Medication', start: 50, end: 53, negated: false },
+        { text: '##les', group: 'MEDICATION', entity_type: 'Medication', start: 53, end: 56, negated: false },
+        { text: '##terol', group: 'MEDICATION', entity_type: 'Medication', start: 56, end: 61, negated: false },
+        // An OTHER entity that must be hidden
+        { text: '45 years old', group: 'OTHER', entity_type: 'Age', start: 80, end: 92, negated: false },
+      ],
+    };
+
+    const grouped = getGroupedEntities(rawNlp);
+
+    // Grouping checks
+    expect(grouped.Condition).toHaveLength(2);
+    expect(grouped.Condition[0].text).toBe('hypertension');
+    expect(grouped.Condition[0].negated).toBe(false);
+    expect(grouped.Condition[1].text).toBe('diabetes');
+    expect(grouped.Condition[1].negated).toBe(true);
+
+    // Subword merging: "cho" + "##les" + "##terol" -> "cholesterol"
+    expect(grouped.Medication).toHaveLength(1);
+    expect(grouped.Medication[0].text).toBe('cholesterol');
+
+    // Procedure
+    expect(grouped.Procedure).toHaveLength(1);
+    expect(grouped.Procedure[0].text).toBe('X-ray');
+
+    // OTHER entity must NOT be present in any group
+    const allTexts = [
+      ...grouped.Condition,
+      ...grouped.Medication,
+      ...grouped.Symptom,
+      ...grouped.Procedure,
+    ].map((e) => e.text);
+    expect(allTexts).not.toContain('45 years old');
+  });
+
+  it('17. parseOCRFindings extracts medicines, lab values, and handles empty input', () => {
+    // Empty / null OCR
+    const emptyOcr = parseOCRFindings(null);
+    expect(emptyOcr.hasOcr).toBe(false);
+    expect(emptyOcr.medicines).toEqual([]);
+    expect(emptyOcr.labValues).toEqual([]);
+
+    // Real OCR shape with prescription and lab
+    const populatedOcr = {
+      printed_text: 'Rx: Metformin 500mg daily\nLab: HbA1c 7.2%',
+      extracted: [
+        { type: 'prescription', medicine: 'Metformin', dosage: '500 mg', frequency: 'daily' },
+        { type: 'lab', test: 'HbA1c', value: '7.2', unit: '%', reference: '< 5.7' },
+      ],
+      handwriting_top3: [
+        { medicine: 'Amlodipine', confidence: 0.92 },
+      ],
+    };
+
+    const parsed = parseOCRFindings(populatedOcr);
+    expect(parsed.hasOcr).toBe(true);
+    expect(parsed.rawText).toContain('Metformin');
+    expect(parsed.medicines).toHaveLength(1);
+    expect(parsed.medicines[0].medicine).toBe('Metformin');
+    expect(parsed.labValues).toHaveLength(1);
+    expect(parsed.labValues[0].test).toBe('HbA1c');
+    expect(parsed.handwriting).toHaveLength(1);
+    expect(parsed.handwriting[0].medicine).toBe('Amlodipine');
   });
 });

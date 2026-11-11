@@ -245,6 +245,55 @@ export function formatFeature(name, value) {
 }
 
 /**
+ * Format a feature condition comparison, translating binary rules (> 0 -> Yes, <= 0 -> No)
+ * and replacing raw feature names with human-readable labels.
+ * e.g. "HighBP > 0.00" -> "High blood pressure: Yes"
+ *      "HighBP <= 0.00" -> "High blood pressure: No"
+ *      "GenHlth > 3.00" -> "General health > 3.00"
+ */
+export function formatCondition(condStr) {
+  if (typeof condStr !== 'string') return null;
+  const str = condStr.trim().replace(/^['"]+|['"]+$/g, '');
+
+  // 1. Match: <Feature> (>|>=|<=|<) <number>
+  const compMatch = str.match(/^([A-Za-z0-9_]+)\s*(>|>=|<=|<)\s*([0-9.]+)/);
+  if (compMatch) {
+    const rawFeat = compMatch[1].trim();
+    const op = compMatch[2];
+    const standardKey = NAME_TO_KEY[rawFeat.toLowerCase()] || (FEATURE_NAMES[rawFeat] ? rawFeat : null);
+
+    if (standardKey) {
+      const isBinary = BINARY_FIELDS.some((b) => b.key === standardKey);
+      if (isBinary) {
+        // > or >= on binary feature means Yes (1.0); <= or < means No (0.0)
+        const isYes = op === '>' || op === '>=';
+        return `${formatFeatureName(standardKey)}: ${isYes ? 'Yes' : 'No'}`;
+      }
+      if (standardKey === 'Sex') {
+        const isMale = op === '>' || op === '>=';
+        return `Sex: ${isMale ? 'Male' : 'Female'}`;
+      }
+      // Non-binary feature: format feature name + operator + value
+      const friendlyName = formatFeatureName(standardKey);
+      return str.replace(rawFeat, friendlyName);
+    }
+  }
+
+  // 2. Two-sided condition: <num> < <Feature> <= <num>
+  const twoSided = str.match(/^([0-9.]+)\s*<\s*([A-Za-z0-9_]+)\s*(<=|<)\s*([0-9.]+)/);
+  if (twoSided) {
+    const rawFeat = twoSided[2].trim();
+    const standardKey = NAME_TO_KEY[rawFeat.toLowerCase()] || (FEATURE_NAMES[rawFeat] ? rawFeat : null);
+    if (standardKey) {
+      const friendlyName = formatFeatureName(standardKey);
+      return str.replace(rawFeat, friendlyName);
+    }
+  }
+
+  return null;
+}
+
+/**
  * Replace raw feature tokens and <FeatureName>=<value> patterns in an explanation string
  * with human-readable labels and formatted values.
  * e.g. "GenHlth=4 increased the probability of High risk (SHAP=+0.1368)"
@@ -254,7 +303,18 @@ export function formatFeatureInText(text) {
   if (typeof text !== 'string') return text;
   let out = text;
 
-  // 1. Convert <FeatureName>=<value> tokens first
+  // 0. If the entire string is a comparison condition
+  const directCond = formatCondition(out);
+  if (directCond) return directCond;
+
+  // 1. Handle LIME sentence conditions in quotes: Condition '<cond>' or unclosed Condition '<cond>
+  // Ensure the closing quote is always closed!
+  out = out.replace(/Condition\s+'([^']+?)('?)(\s+pushes|\s+decreases|\s+increases|\s+lowers|\(|$)/gi, (match, cond, closingQuote, rest) => {
+    const formattedCond = formatCondition(cond) || formatFeatureInText(cond);
+    return `Condition '${formattedCond}'${rest}`;
+  });
+
+  // 2. Convert <FeatureName>=<value> tokens
   const pattern = /([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)*)=([^\s,;()]+)/g;
   out = out.replace(pattern, (match, featName, val) => {
     try {
@@ -269,7 +329,14 @@ export function formatFeatureInText(text) {
     }
   });
 
-  // 2. Replace standalone feature keys with friendly names
+  // 3. Convert standalone <Feature> (>|>=|<=|<) <num> conditions in text
+  const condPattern = /\b([A-Za-z0-9_]+)\s*(>|>=|<=|<)\s*([0-9.]+)\b/g;
+  out = out.replace(condPattern, (match) => {
+    const fc = formatCondition(match);
+    return fc || match;
+  });
+
+  // 4. Replace standalone feature keys with friendly names
   for (const [key, name] of Object.entries(FEATURE_NAMES)) {
     const reg = new RegExp(`\\b${key}\\b`, 'g');
     out = out.replace(reg, name);
@@ -302,6 +369,11 @@ export const RULE_TITLES = {
 export function formatRuleTitle(ruleId) {
   if (!ruleId) return 'Guidance Recommendation';
   if (RULE_TITLES[ruleId]) return RULE_TITLES[ruleId];
+  const fc = formatCondition(ruleId);
+  if (fc) return fc;
+  if (ruleId.includes('>') || ruleId.includes('<') || ruleId.includes('=')) {
+    return formatFeatureInText(ruleId);
+  }
   return ruleId
     .replace(/^REC_/, '')
     .split('_')
@@ -373,29 +445,36 @@ export function parseExplanationItem(item, type = 'shap') {
     feature = condMatch[1];
     label = formatFeatureInText(condMatch[1]);
   } else {
-    // Check for "<FeatureName>=<value>" at the beginning of sentence (standard SHAP output)
-    const eqMatch = str.match(/^([A-Za-z0-9_]+)=([^\s,;()]+)/);
-    if (eqMatch) {
-      feature = eqMatch[1];
-      label = formatFeature(feature, eqMatch[2]);
+    // Also check for unclosed condition: Condition '<condition> pushes...
+    const unclosedMatch = str.match(/Condition\s+'([^']+?)(?:\s+(?:pushes|decreases|increases|lowers|\(|$))/i);
+    if (unclosedMatch) {
+      feature = unclosedMatch[1];
+      label = formatFeatureInText(unclosedMatch[1]);
     } else {
-      // Find any known BRFSS feature with =
-      const anyEq = str.match(/([A-Za-z0-9_]+)=([^\s,;()]+)/g);
-      let foundKnown = false;
-      if (anyEq) {
-        for (const token of anyEq) {
-          const [k, v] = token.split('=');
-          if (NAME_TO_KEY[k.toLowerCase()]) {
-            feature = k;
-            label = formatFeature(k, v);
-            foundKnown = true;
-            break;
+      // Check for "<FeatureName>=<value>" at the beginning of sentence (standard SHAP output)
+      const eqMatch = str.match(/^([A-Za-z0-9_]+)=([^\s,;()]+)/);
+      if (eqMatch) {
+        feature = eqMatch[1];
+        label = formatFeature(feature, eqMatch[2]);
+      } else {
+        // Find any known BRFSS feature with =
+        const anyEq = str.match(/([A-Za-z0-9_]+)=([^\s,;()]+)/g);
+        let foundKnown = false;
+        if (anyEq) {
+          for (const token of anyEq) {
+            const [k, v] = token.split('=');
+            if (NAME_TO_KEY[k.toLowerCase()]) {
+              feature = k;
+              label = formatFeature(k, v);
+              foundKnown = true;
+              break;
+            }
           }
         }
-      }
-      if (!foundKnown) {
-        // Fallback: take leading words before verb
-        label = formatFeatureInText(str.split(/\s+(?:increased|lowered|pushes|decreases)/i)[0]);
+        if (!foundKnown) {
+          // Fallback: take leading words before verb
+          label = formatFeatureInText(str.split(/\s+(?:increased|lowered|pushes|decreases)/i)[0]);
+        }
       }
     }
   }
@@ -434,68 +513,253 @@ export function computeDivergingBars(items, type = 'shap') {
   });
 }
 
+// 8b. All 21 standard BRFSS feature keys
+export const ALL_BRFSS_KEYS = [
+  'HighBP',
+  'HighChol',
+  'CholCheck',
+  'BMI',
+  'Smoker',
+  'Stroke',
+  'HeartDiseaseorAttack',
+  'PhysActivity',
+  'Fruits',
+  'Veggies',
+  'HvyAlcoholConsump',
+  'AnyHealthcare',
+  'NoDocbcCost',
+  'GenHlth',
+  'MentHlth',
+  'PhysHlth',
+  'DiffWalk',
+  'Sex',
+  'Age',
+  'Education',
+  'Income',
+];
+
 /**
  * Converts wizard form state into the final BRFSS payload dictionary.
  * Skipped or unselected fields are completely omitted from the payload object.
  */
 export function buildBRFSSPayload(formData) {
+  if (!formData || typeof formData !== 'object') return {};
   const payload = {};
 
-  // Required: Age
-  if (formData.age !== undefined && formData.age !== '' && formData.age !== null) {
-    const band = mapAgeToBand(Number(formData.age));
-    if (band !== null) payload.Age = band;
+  // Age (band 1-13 or raw age in years 18-120)
+  const ageRaw = formData.Age !== undefined && formData.Age !== null && formData.Age !== ''
+    ? formData.Age
+    : (formData.age !== undefined && formData.age !== null && formData.age !== '' ? formData.age : undefined);
+  if (ageRaw !== undefined) {
+    const ageNum = Number(ageRaw);
+    if (!isNaN(ageNum)) {
+      if (ageNum >= 1 && ageNum <= 13 && Number.isInteger(ageNum)) {
+        payload.Age = ageNum;
+      } else {
+        const band = mapAgeToBand(ageNum);
+        if (band !== null) payload.Age = band;
+      }
+    }
   }
 
-  // Required: Sex
-  if (formData.sex !== undefined && formData.sex !== '' && formData.sex !== null) {
-    const s = Number(formData.sex);
+  // Sex (0 female, 1 male)
+  const sexRaw = formData.Sex !== undefined && formData.Sex !== null && formData.Sex !== ''
+    ? formData.Sex
+    : (formData.sex !== undefined && formData.sex !== null && formData.sex !== '' ? formData.sex : undefined);
+  if (sexRaw !== undefined) {
+    const s = Number(sexRaw);
     if (s === 0 || s === 1) payload.Sex = s;
   }
 
-  // Required: Height & Weight -> BMI
-  if (formData.height && formData.weight) {
+  // BMI (direct or derived from height/weight)
+  if (formData.BMI !== undefined && formData.BMI !== null && formData.BMI !== '') {
+    const b = Number(formData.BMI);
+    if (!isNaN(b) && b >= 12.0 && b <= 98.0) payload.BMI = Math.round(b * 10) / 10;
+  } else if (formData.height && formData.weight) {
     const bmi = computeBMI(formData.height, formData.weight);
     if (bmi !== null) payload.BMI = bmi;
   }
 
-  // Required: General health
-  if (formData.genHlth !== undefined && formData.genHlth !== '' && formData.genHlth !== null) {
-    const gh = Number(formData.genHlth);
+  // General health (1-5)
+  const genRaw = formData.GenHlth !== undefined && formData.GenHlth !== null && formData.GenHlth !== ''
+    ? formData.GenHlth
+    : (formData.genHlth !== undefined && formData.genHlth !== null && formData.genHlth !== '' ? formData.genHlth : undefined);
+  if (genRaw !== undefined) {
+    const gh = Number(genRaw);
     if (gh >= 1 && gh <= 5) payload.GenHlth = gh;
   }
 
-  // Optional: Binary fields
+  // Binary fields (13 fields)
   for (const field of BINARY_FIELDS) {
     const val = formData[field.key];
-    if (val === true || val === 1 || val === '1') {
+    if (val === true || val === 1 || val === '1' || val === 1.0) {
       payload[field.key] = 1.0;
-    } else if (val === false || val === 0 || val === '0') {
+    } else if (val === false || val === 0 || val === '0' || val === 0.0) {
       payload[field.key] = 0.0;
     }
   }
 
-  // Optional: Mental & Physical health days (0-30)
-  if (formData.mentHlth !== undefined && formData.mentHlth !== '' && formData.mentHlth !== null) {
-    const m = Number(formData.mentHlth);
+  // Mental health days (0-30 days; 0 is valid!)
+  const mentRaw = formData.MentHlth !== undefined && formData.MentHlth !== null && formData.MentHlth !== ''
+    ? formData.MentHlth
+    : (formData.mentHlth !== undefined && formData.mentHlth !== null && formData.mentHlth !== '' ? formData.mentHlth : undefined);
+  if (mentRaw !== undefined) {
+    const m = Number(mentRaw);
     if (!isNaN(m) && m >= 0 && m <= 30) payload.MentHlth = m;
   }
-  if (formData.physHlth !== undefined && formData.physHlth !== '' && formData.physHlth !== null) {
-    const p = Number(formData.physHlth);
+
+  // Physical health days (0-30 days; 0 is valid!)
+  const physRaw = formData.PhysHlth !== undefined && formData.PhysHlth !== null && formData.PhysHlth !== ''
+    ? formData.PhysHlth
+    : (formData.physHlth !== undefined && formData.physHlth !== null && formData.physHlth !== '' ? formData.physHlth : undefined);
+  if (physRaw !== undefined) {
+    const p = Number(physRaw);
     if (!isNaN(p) && p >= 0 && p <= 30) payload.PhysHlth = p;
   }
 
-  // Optional: Education (1-6)
-  if (formData.education !== undefined && formData.education !== '' && formData.education !== null) {
-    const ed = Number(formData.education);
+  // Education (1-6)
+  const edRaw = formData.Education !== undefined && formData.Education !== null && formData.Education !== ''
+    ? formData.Education
+    : (formData.education !== undefined && formData.education !== null && formData.education !== '' ? formData.education : undefined);
+  if (edRaw !== undefined) {
+    const ed = Number(edRaw);
     if (!isNaN(ed) && ed >= 1 && ed <= 6) payload.Education = ed;
   }
 
-  // Optional: Income (1-8)
-  if (formData.income !== undefined && formData.income !== '' && formData.income !== null) {
-    const inc = Number(formData.income);
+  // Income (1-8)
+  const incRaw = formData.Income !== undefined && formData.Income !== null && formData.Income !== ''
+    ? formData.Income
+    : (formData.income !== undefined && formData.income !== null && formData.income !== '' ? formData.income : undefined);
+  if (incRaw !== undefined) {
+    const inc = Number(incRaw);
     if (!isNaN(inc) && inc >= 1 && inc <= 8) payload.Income = inc;
   }
 
   return payload;
+}
+
+
+/**
+ * Merges raw word pieces and groups biomedical NLP entities into:
+ * Condition, Medication, Symptom, Procedure.
+ * Excludes 'OTHER' labels.
+ * Attaches negated flag when present.
+ */
+export function getGroupedEntities(nlp) {
+  if (!nlp || typeof nlp !== 'object') {
+    return { Condition: [], Medication: [], Symptom: [], Procedure: [] };
+  }
+
+  function mergeTokens(items) {
+    if (!Array.isArray(items) || items.length === 0) return [];
+    const merged = [];
+    for (const item of items) {
+      if (!item) continue;
+      const rawText = String(item.text || '').trim();
+      if (!rawText) continue;
+
+      const isSubword = rawText.startsWith('##');
+      const cleanPiece = rawText.replace(/^##/, '');
+      const last = merged[merged.length - 1];
+
+      // Merge if subword piece (##) or character span directly continues previous token
+      const isContinuation = last && (
+        isSubword ||
+        (item.start !== undefined && last.end !== undefined && item.start <= last.end + 1)
+      );
+
+      if (isContinuation) {
+        // If adjacent without space, concatenate; if separated by space, join with space
+        const needsSpace = !isSubword && item.start !== undefined && last.end !== undefined && item.start > last.end;
+        last.text = last.text + (needsSpace ? ' ' : '') + cleanPiece;
+        if (item.end !== undefined) last.end = item.end;
+        if (item.negated) last.negated = true;
+      } else {
+        merged.push({
+          ...item,
+          text: cleanPiece,
+        });
+      }
+    }
+    return merged;
+  }
+
+  // 1. Conditions: from nlp.diseases and nlp.history, or fallback to entities with DIS_SYM/DISEASE/History
+  const rawConditions = Array.isArray(nlp.diseases) && nlp.diseases.length > 0
+    ? [...nlp.diseases, ...(Array.isArray(nlp.history) ? nlp.history : [])]
+    : (Array.isArray(nlp.entities) ? nlp.entities : []).filter(
+        (e) => e.group === 'DIS_SYM' || e.group === 'DISEASE' || e.entity_type === 'History'
+      );
+
+  // 2. Medications: from nlp.medications or fallback to entities with MEDICATION
+  const rawMedications = Array.isArray(nlp.medications) && nlp.medications.length > 0
+    ? nlp.medications
+    : (Array.isArray(nlp.entities) ? nlp.entities : []).filter((e) => e.group === 'MEDICATION');
+
+  // 3. Symptoms: from nlp.symptoms or fallback to entities with SYMPTOM
+  const rawSymptoms = Array.isArray(nlp.symptoms) && nlp.symptoms.length > 0
+    ? nlp.symptoms
+    : (Array.isArray(nlp.entities) ? nlp.entities : []).filter((e) => e.group === 'SYMPTOM');
+
+  // 4. Procedures: from nlp.procedures or fallback to entities with PROCEDURE
+  const rawProcedures = Array.isArray(nlp.procedures) && nlp.procedures.length > 0
+    ? nlp.procedures
+    : (Array.isArray(nlp.entities) ? nlp.entities : []).filter((e) => e.group === 'PROCEDURE');
+
+  // Deduplicate by lower-case text within each group
+  function dedupeMerged(list) {
+    const merged = mergeTokens(list);
+    const seen = new Set();
+    const result = [];
+    for (const item of merged) {
+      const key = item.text.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(item);
+      }
+    }
+    return result;
+  }
+
+  return {
+    Condition: dedupeMerged(rawConditions),
+    Medication: dedupeMerged(rawMedications),
+    Symptom: dedupeMerged(rawSymptoms),
+    Procedure: dedupeMerged(rawProcedures),
+  };
+}
+
+/**
+ * Extracts and structures OCR findings into raw text, medicines, lab values, and handwriting predictions.
+ */
+export function parseOCRFindings(ocr) {
+  if (!ocr || typeof ocr !== 'object') {
+    return { hasOcr: false, rawText: null, medicines: [], labValues: [], handwriting: [] };
+  }
+
+  const rawText = ocr.printed_text || ocr.text || ocr.raw_text || null;
+  const handwriting = Array.isArray(ocr.handwriting_top3) ? ocr.handwriting_top3 : [];
+
+  let medicines = Array.isArray(ocr.medicines) ? [...ocr.medicines] : [];
+  let labValues = Array.isArray(ocr.labs) ? [...ocr.labs] : (Array.isArray(ocr.labValues) ? [...ocr.labValues] : []);
+
+  const rawList = Array.isArray(ocr.extracted)
+    ? ocr.extracted
+    : (ocr.extracted_fields ? (Array.isArray(ocr.extracted_fields) ? ocr.extracted_fields : [ocr.extracted_fields]) : []);
+
+  if (medicines.length === 0 && labValues.length === 0 && rawList.length > 0) {
+    for (const item of rawList) {
+      if (!item) continue;
+      if (item.type === 'lab' || item.test) {
+        labValues.push(item);
+      } else if (item.type === 'prescription' || item.medicine || item.dosage) {
+        medicines.push(item);
+      } else if (item.type === 'unknown') {
+        medicines.push(item);
+      }
+    }
+  }
+
+  const hasOcr = medicines.length > 0 || labValues.length > 0 || rawList.length > 0 || !!rawText || handwriting.length > 0;
+  return { hasOcr, rawText, medicines, labValues, handwriting };
 }

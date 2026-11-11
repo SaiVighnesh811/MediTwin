@@ -12,6 +12,8 @@ import {
   EDUCATION_OPTIONS,
   INCOME_OPTIONS,
   BINARY_FIELDS,
+  FEATURE_NAMES,
+  ALL_BRFSS_KEYS,
   buildBRFSSPayload,
 } from '../lib/brfss';
 import { analysisAPI } from '../lib/api';
@@ -514,6 +516,42 @@ export default function Wizard() {
                         ))}
                       </select>
                     </div>
+
+                    {/* Optional: Mental Health Days */}
+                    <div className={styles.formGroup}>
+                      <label className={styles.label} htmlFor="input-menthlth">
+                        Days of poor mental health in the last 30 days
+                      </label>
+                      <input
+                        id="input-menthlth"
+                        type="number"
+                        min="0"
+                        max="30"
+                        className={styles.input}
+                        placeholder="0 – 30 (0 = none)"
+                        value={formData.mentHlth}
+                        onChange={(e) => handleFieldChange('mentHlth', e.target.value)}
+                      />
+                      <span className={styles.helper}>Enter 0 if you had no poor mental health days</span>
+                    </div>
+
+                    {/* Optional: Physical Health Days */}
+                    <div className={styles.formGroup}>
+                      <label className={styles.label} htmlFor="input-physhlth">
+                        Days of poor physical health in the last 30 days
+                      </label>
+                      <input
+                        id="input-physhlth"
+                        type="number"
+                        min="0"
+                        max="30"
+                        className={styles.input}
+                        placeholder="0 – 30 (0 = none)"
+                        value={formData.physHlth}
+                        onChange={(e) => handleFieldChange('physHlth', e.target.value)}
+                      />
+                      <span className={styles.helper}>Enter 0 if you had no poor physical health days</span>
+                    </div>
                   </div>
 
                   <hr style={{ borderColor: 'var(--border-hairline)', margin: '1.5rem 0' }} />
@@ -707,7 +745,28 @@ export default function Wizard() {
                     <div><strong>General Health:</strong> {GEN_HLTH_OPTIONS.find((o) => o.value === Number(formData.genHlth))?.label}</div>
                     <div>
                       <strong>Survey Indicators Provided:</strong>{' '}
-                      {Object.keys(buildBRFSSPayload(formData)).length} of 21 survey features provided
+                      {(() => {
+                        const payload = buildBRFSSPayload(formData);
+                        const answeredCount = Object.keys(payload).length;
+                        const unansweredKeys = ALL_BRFSS_KEYS.filter((k) => !(k in payload));
+                        return (
+                          <>
+                            {answeredCount} of 21 survey features provided
+                            {unansweredKeys.length > 0 && (
+                              <details style={{ marginTop: '0.4rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                                <summary style={{ cursor: 'pointer', color: 'var(--text-tertiary)' }}>
+                                  Not answered (these will be assumed): {unansweredKeys.map((k) => FEATURE_NAMES[k] || k).join(', ')}
+                                </summary>
+                                <ul style={{ margin: '0.4rem 0 0 1rem', padding: 0 }}>
+                                  {unansweredKeys.map((k) => (
+                                    <li key={k} style={{ listStyle: 'disc' }}>{FEATURE_NAMES[k] || k}</li>
+                                  ))}
+                                </ul>
+                              </details>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                     <div><strong>Document Uploaded:</strong> {docFile ? docFile.name : 'None'}</div>
                     <div><strong>X-Ray Uploaded:</strong> {xrayFile ? xrayFile.name : 'None'}</div>

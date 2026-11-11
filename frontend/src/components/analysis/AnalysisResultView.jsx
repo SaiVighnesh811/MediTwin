@@ -10,6 +10,8 @@ import {
   formatRuleTitle,
   formatCategory,
   computeDivergingBars,
+  getGroupedEntities,
+  parseOCRFindings,
 } from '../../lib/brfss';
 import { api } from '../../lib/api';
 
@@ -60,8 +62,11 @@ export default function AnalysisResultView({ data }) {
     (isImageResult ? result : null) ||
     (result.pneumonia_probability !== undefined ? result : null) ||
     (result.pneumonia_score !== undefined ? result : null);
-  const ocr = result.ocr_findings || (result.extracted_fields ? result : null);
-  const nlp = result.nlp_entities || (result.entities ? result : null);
+  const ocr = result.ocr_findings || result.ocr || (result.extracted_fields ? result : null);
+  const nlp = result.nlp_entities || result.nlp || (result.entities ? result : null);
+  const ocrData = parseOCRFindings(ocr);
+  const groupedEntities = getGroupedEntities(nlp);
+  const hasNlpContent = Object.values(groupedEntities).some((arr) => arr.length > 0);
   const recs = result.recommendations || [];
   const agentStatus = result.agent_status || {};
 
@@ -126,7 +131,7 @@ export default function AnalysisResultView({ data }) {
         <strong>CRITICAL DISCLAIMER:</strong> Decision-support prototype. Not a medical diagnosis.
       </div>
 
-      {/* b. Reliability Banner */}
+      {/* b. Input completeness banner */}
       {reliability && (
         <div
           className={`${styles.reliabilityBanner} ${styles[`rel_${reliability.level}`] || ''}`}
@@ -134,8 +139,11 @@ export default function AnalysisResultView({ data }) {
           aria-live="polite"
         >
           <div className={styles.reliabilityTitle}>
-            Reliability Assessment: {reliability.level}
+            Input completeness: {reliability.level}
           </div>
+          <p style={{ margin: '0.25rem 0 0.5rem 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+            This describes how many inputs were available, not the accuracy of the prediction.
+          </p>
           {reliability.reasons?.length > 0 && (
             <ul className={styles.reliabilityReasons}>
               {reliability.reasons.map((r, i) => (
@@ -154,19 +162,24 @@ export default function AnalysisResultView({ data }) {
             Some components could not complete. Remaining agents succeeded with partial execution.
           </p>
           <ul style={{ margin: '0.4rem 0 0 1.25rem', fontSize: '0.85rem' }}>
-            {failedAgents.map(([agent, s]) => (
-              <li key={agent}>
-                <code>{agent}</code>: {s}
-              </li>
-            ))}
-            {failedAgents.length === 0 && result.errors && (
-              Object.entries(result.errors).map(([agent, err]) => (
+            {failedAgents.map(([agent, s]) => {
+              const reason = result.agent_errors?.[agent] || result.errors?.[agent];
+              const showReason = reason && !s.includes(reason);
+              return (
                 <li key={agent}>
-                  <code>{agent}</code>: {String(err)}
+                  <code>{agent}</code>: {s}
+                  {showReason && <span style={{ color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>({reason})</span>}
+                </li>
+              );
+            })}
+            {failedAgents.length === 0 && (result.agent_errors || result.errors) && (
+              Object.entries(result.agent_errors || result.errors).map(([agent, err]) => (
+                <li key={agent}>
+                  <code>{agent}</code>: failed <span style={{ color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>({String(err)})</span>
                 </li>
               ))
             )}
-            {failedAgents.length === 0 && !result.errors && result.error && (
+            {failedAgents.length === 0 && !result.agent_errors && !result.errors && result.error && (
               <li>{result.error}</li>
             )}
           </ul>
@@ -413,7 +426,10 @@ export default function AnalysisResultView({ data }) {
               {/* Pneumonia score gauge */}
               <div style={{ margin: '0.5rem 0 1rem 0' }}>
                 <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
-                  Pneumonia model score (op-normalized, threshold &asymp; {imaging.pneumonia_op_thresh ?? '0.057'})
+                  Pneumonia model score
+                  {typeof imaging.pneumonia_score === 'number' && (
+                    <span> — {imaging.pneumonia_score >= 0.5 ? 'Score above the model\'s operating point' : 'Score below the model\'s operating point'}</span>
+                  )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <div style={{ flex: 1, height: 10, background: 'var(--bg-surface-elevated)', borderRadius: 5, overflow: 'hidden' }}>
@@ -424,7 +440,7 @@ export default function AnalysisResultView({ data }) {
                   </span>
                 </div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
-                  Higher score = model sees more pneumonia-like patterns. Scores are op-normalized probabilities, not calibrated clinical probabilities.
+                  Higher score = model sees more pneumonia-like patterns.
                 </div>
               </div>
 
@@ -432,7 +448,7 @@ export default function AnalysisResultView({ data }) {
               {imaging.related_findings && (
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-                    Related findings (op-normalized scores)
+                    Related findings
                   </div>
                   <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                     {Object.entries(imaging.related_findings).map(([label, val]) => (
@@ -467,7 +483,9 @@ export default function AnalysisResultView({ data }) {
                 </span>
                 <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
                   Pneumonia probability: {Math.round((imaging.pneumonia_probability || 0) * 100)}%
-                  (threshold: {imaging.threshold_used})
+                  {imaging.threshold_used !== undefined && (
+                    <span> (threshold: {imaging.threshold_used})</span>
+                  )}
                 </div>
               </div>
               <div className={styles.detailsBox}>
@@ -486,48 +504,130 @@ export default function AnalysisResultView({ data }) {
         </GlassPanel>
       )}
 
-      {/* f. Document & NLP Card */}
-      {(ocr?.extracted_fields || nlp?.entities?.length > 0) && (
+      {/* f. Document Extraction (OCR) Card */}
+      {!isImageResult && (
         <GlassPanel>
-          <h2 className={styles.riskClassHeading}>Document Extraction & Biomedical Entities</h2>
-
-          {ocr?.extracted_fields && (
-            <div style={{ marginBottom: '1.25rem' }}>
-              <h3 style={{ fontSize: '0.9rem', fontFamily: 'var(--font-mono)', color: 'var(--accent-teal)' }}>
-                Extracted Prescription / Lab Fields
-              </h3>
-              <pre
-                style={{
-                  background: 'var(--bg-surface-elevated)',
-                  padding: '0.75rem',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '0.8rem',
-                  overflowX: 'auto',
-                }}
-              >
-                {JSON.stringify(ocr.extracted_fields, null, 2)}
-              </pre>
+          <h2 className={styles.riskClassHeading}>Document Extraction (Prescription &amp; Lab OCR)</h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.25rem 0 1rem 0' }}>
+            Read automatically from the image. Check against the original document.
+          </p>
+          {!ocrData.hasOcr ? (
+            <div style={{ color: 'var(--text-tertiary)', fontSize: '0.88rem', fontStyle: 'italic' }}>
+              No document uploaded
             </div>
-          )}
-
-          {nlp?.entities?.length > 0 && (
+          ) : (
             <div>
-              <h3 style={{ fontSize: '0.9rem', fontFamily: 'var(--font-mono)', color: 'var(--accent-teal)', marginBottom: '0.5rem' }}>
-                Biomedical Entities (DistilBERT NER)
-              </h3>
-              <div>
-                {nlp.entities.map((e, idx) => (
-                  <span
-                    key={idx}
-                    className={`${styles.entityChip} ${styles[`chip_${e.group}`] || ''}`}
-                    title={`Type: ${e.entity_type} (conf: ${Math.round((e.confidence || 0) * 100)}%)`}
-                  >
-                    {e.text} <small style={{ opacity: 0.7 }}>[{e.group}]</small>
-                  </span>
-                ))}
-              </div>
+              {ocrData.rawText && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.3rem', fontWeight: 600 }}>
+                    Extracted Text
+                  </div>
+                  <div style={{ background: 'var(--bg-surface-elevated)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap' }}>
+                    {ocrData.rawText}
+                  </div>
+                </div>
+              )}
+
+              {ocrData.medicines.length > 0 && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--accent-teal)', marginBottom: '0.4rem', fontWeight: 600 }}>
+                    Extracted Medicines
+                  </div>
+                  <div style={{ display: 'grid', gap: '0.5rem' }}>
+                    {ocrData.medicines.map((m, idx) => {
+                      const medName = m.medicine || 'Medicine';
+                      const dose = m.dosage || 'dose not read';
+                      const parts = [medName, dose];
+                      if (m.frequency) parts.push(m.frequency);
+                      if (m.duration) parts.push(m.duration);
+                      return (
+                        <div key={idx} style={{ background: 'var(--bg-surface-elevated)', padding: '0.6rem 0.85rem', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem' }}>
+                          <strong>{medName}</strong>, {parts.slice(1).join(', ')}
+                          {m.confidence !== undefined && (
+                            <span style={{ color: 'var(--text-tertiary)', marginLeft: '0.5rem' }}>
+                              (conf: {Math.round(m.confidence * 100)}%)
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {ocrData.handwriting.length > 0 && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--accent-amber)', marginBottom: '0.4rem', fontWeight: 600 }}>
+                    Handwritten Medicine Candidates
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {ocrData.handwriting.map((h, idx) => (
+                      <div key={idx} style={{ background: 'var(--bg-surface-elevated)', padding: '0.4rem 0.7rem', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem' }}>
+                        <span>{h.medicine}</span>
+                        {h.confidence !== undefined && (
+                          <span style={{ color: 'var(--accent-teal)', fontWeight: 600, marginLeft: '0.35rem' }}>
+                            {Math.round(h.confidence * 100)}%
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {ocrData.labValues.length > 0 && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--accent-blue)', marginBottom: '0.4rem', fontWeight: 600 }}>
+                    Extracted Lab Values
+                  </div>
+                  <div style={{ display: 'grid', gap: '0.5rem' }}>
+                    {ocrData.labValues.map((l, idx) => {
+                      const refText = l.reference
+                        ? `(printed reference: ${l.reference}${l.flag ? ` — ${l.flag}` : ''})`
+                        : '';
+                      return (
+                        <div key={idx} style={{ background: 'var(--bg-surface-elevated)', padding: '0.6rem 0.85rem', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem' }}>
+                          <strong>{l.test || 'Lab Test'}</strong>: {l.value} {l.unit} {refText}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
+        </GlassPanel>
+      )}
+
+      {/* g. Clinical Notes & Biomedical Entities (NLP) Card */}
+      {hasNlpContent && (
+        <GlassPanel>
+          <h2 className={styles.riskClassHeading}>Biomedical Entities (Clinical Notes NER)</h2>
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            {['Condition', 'Medication', 'Symptom', 'Procedure'].map((category) => {
+              const items = groupedEntities[category] || [];
+              if (items.length === 0) return null;
+              return (
+                <div key={category}>
+                  <div style={{ fontSize: '0.82rem', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+                    {category}s ({items.length})
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    {items.map((item, idx) => (
+                      <span
+                        key={idx}
+                        className={`${styles.entityChip} ${styles[`chip_${category}`] || ''}`}
+                        title={item.confidence ? `Confidence: ${Math.round(item.confidence * 100)}%` : undefined}
+                      >
+                        {item.text}
+                        {item.negated && <span className={styles.negatedTag}>Denied</span>}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </GlassPanel>
       )}
 

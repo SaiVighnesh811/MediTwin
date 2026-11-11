@@ -337,3 +337,34 @@ ps -p $(pgrep -f "uvicorn ml_service.main:app" | head -n 1) -o pid,rss,cmd
 # Or inspect RSS across all MediTwin processes (Node backend + ML service)
 ps aux | grep -E "node.*server.js|uvicorn.*ml_service" | grep -v grep | awk '{printf "PID: %s | RSS: %.2f MB | Command: %s\n", $2, $6/1024, $11}'
 ```
+
+---
+
+## 16. Chapter 15: Warm Start, Timeouts, Logging & Extraction Reliability (15a - 15d)
+
+```bash
+# 1. Run all 22 ml_service tests (including warm start, 503/504 timeouts, caplog start/end/fail, NLP whole-word, line-by-line OCR parser & memory deduplication)
+cd /home/sai/Documents/MEDITWIN/meditwin-ai
+source venv/bin/activate
+python -m pytest ml_service/tests/test_ml_service.py -v
+
+# 2. Run backend Jest suite (25 tests across 2 suites including 503/504 error mapping & timeouts)
+cd /home/sai/Documents/MEDITWIN/meditwin-ai/backend && npm test
+
+# 3. Run frontend Vitest suite (42 tests across 4 suites including Document card OCR, 'dose not read', X-ray operating point, & LIME rules)
+cd /home/sai/Documents/MEDITWIN/meditwin-ai/frontend && npx vitest run
+
+# 4. Run frontend production build
+cd /home/sai/Documents/MEDITWIN/meditwin-ai/frontend && npm run build
+
+# 5. Measure background warm-up progress and process RSS in your shell:
+# Start the ML service (in terminal 1):
+cd /home/sai/Documents/MEDITWIN/meditwin-ai && source venv/bin/activate
+uvicorn ml_service.main:app --host 127.0.0.1 --port 8000 --workers 1
+
+# Poll /health without blocking to monitor warming status and loaded models (in terminal 2):
+curl -s http://127.0.0.1:8000/health | python3 -m json.tool
+
+# Watch process RSS growth in real-time as background warm-up loads models sequentially:
+watch -n 1 'ps -p $(pgrep -f "uvicorn ml_service.main:app" | head -n 1) -o pid,rss,cmd | awk "NR==1; NR>1 {printf \"%s %d MB %s\n\", \$1, \$2/1024, \$3}"'
+```
