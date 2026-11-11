@@ -13,3 +13,4 @@ nohup.out
 .ipynb_checkpoints/
 models/medical_image_download/
 models/medical_image/resnet18_xray.pt
+data/patient_memory/*.json
