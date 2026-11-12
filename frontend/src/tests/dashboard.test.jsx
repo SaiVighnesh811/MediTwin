@@ -259,4 +259,83 @@ describe('Chapter 14e: Dashboard Counters & Wizard Tests', () => {
       expect(calledFormData.get('file')).toBeTruthy();
     });
   });
+
+  describe('3. Chapter 16c: X-ray plausibility reject message', () => {
+    it('shows the reject message in an alert when the API returns 422', async () => {
+      const XRAY_REJECT_MSG =
+        'This image does not look like a chest X-ray (it looks like a colour photo, ' +
+        'a document or a blank page). Please upload a frontal chest X-ray.';
+
+      // Mock the image API to reject with the plausibility message
+      analysisAPI.image.mockRejectedValueOnce(new Error(XRAY_REJECT_MSG));
+
+      render(
+        <MemoryRouter>
+          <AuthProvider>
+            <Wizard />
+          </AuthProvider>
+        </MemoryRouter>,
+      );
+
+      // Switch to X-ray only mode
+      const xrayModeBtn = screen.getByRole('button', { name: /chest x-ray only/i });
+      fireEvent.click(xrayModeBtn);
+
+      // Enter age
+      const ageInput = screen.getByLabelText(/patient age in years/i);
+      fireEvent.change(ageInput, { target: { value: '30' } });
+
+      // Upload file
+      const file = new File(['fake-img'], 'landscape.png', { type: 'image/png' });
+      const fileInput = document.querySelector('input[type="file"]');
+      fireEvent.change(fileInput, { target: { files: [file] } });
+
+      // Run screening
+      const runBtn = screen.getByRole('button', { name: /run chest x-ray screening/i });
+      fireEvent.click(runBtn);
+
+      await waitFor(() => {
+        const alert = screen.getByRole('alert');
+        expect(alert.textContent).toContain('does not look like a chest X-ray');
+      });
+    });
+  });
+
+  describe('4. Chapter 16 Final: Memory checkbox & Minimum inputs guard', () => {
+    it('shows the memory fill checkbox checked by default in Step 3', async () => {
+      render(
+        <MemoryRouter>
+          <AuthProvider>
+            <Wizard />
+          </AuthProvider>
+        </MemoryRouter>,
+      );
+
+      // Fill required fields to advance
+      fireEvent.change(screen.getByLabelText(/biological sex/i), { target: { value: '1' } });
+      fireEvent.change(screen.getByLabelText(/height/i), { target: { value: '175' } });
+      fireEvent.change(screen.getByLabelText(/weight/i), { target: { value: '70' } });
+      fireEvent.change(screen.getByLabelText(/general health/i), { target: { value: '2' } });
+      fireEvent.change(screen.getByLabelText(/age \(years\)/i), { target: { value: '35' } });
+
+      fireEvent.click(screen.getByRole('button', { name: /next: documents & images/i }));
+      await waitFor(() => {
+        expect(screen.getByText(/2\. Documents, Notes & Imaging/i)).toBeTruthy();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /next: review & run/i }));
+      await waitFor(() => {
+        expect(screen.getByText(/3\. Review & Run Analysis/i)).toBeTruthy();
+      });
+
+      // Verify the memory checkbox is present and checked by default
+      const checkbox = screen.getByRole('checkbox', { name: /use my saved records to fill skipped answers/i });
+      expect(checkbox).toBeTruthy();
+      expect(checkbox.checked).toBe(true);
+
+      // Verify user can toggle it off
+      fireEvent.click(checkbox);
+      expect(checkbox.checked).toBe(false);
+    });
+  });
 });

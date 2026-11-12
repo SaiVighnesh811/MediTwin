@@ -58,3 +58,27 @@ This document records the third-party pretrained models used within MediTwin AI,
 - **Measured Latency**: avg ~211 ms/sentence (first call ~1,500 ms warmup); CPU only.
 - **Measured Memory**: +162 MB RSS when loaded after ResNet18; ~1,081 MB total peak during dual-model inference.
 - **Clinical Disclaimer**: Not for clinical use. Research prototype for educational purposes only.
+
+---
+
+## 3. OCR Agent — Handwritten Medicine Classifier
+
+- **Model Name**: ResNet18 Handwritten Medicine Name Classifier (`models/ocr/handwriting_cnn.pt`)
+- **Dataset**: `mamun1113/doctors-handwritten-prescription-bd-dataset`
+- **Authors / Developers**: Md. Abdullah Al Mamun, et al.
+- **License**: Dataset shared under public research terms on Kaggle
+- **Architecture**: `torchvision.models.resnet18` (ImageNet pretrained, final FC layer fine-tuned to 78 classes, 128×128 input)
+- **Classes**: Closed set of 78 Bangladesh medicine brand names
+- **Data Splits**: Official authors' split (Training: 3,120, Validation: 780, Testing: 780)
+- **Validation Tuning**: Confidence threshold 0.3 selected on official validation split (yielding 86.15% coverage, 95.83% precision among answered)
+- **Test Performance (780 images)**:
+  - Top-1 Accuracy: 75.77%
+  - Top-3 Accuracy: 87.31%
+  - At threshold 0.3: Coverage 75.00% (585/780), Precision among answered 90.26%
+- **Pipeline Integration**:
+  - Unified via `agents/ocr_agent/ocr_agent.py:process_document` for both `/v1/ocr` and `/v1/analyze`
+  - Invoked on unknown EasyOCR bounding box crops (excluding doses, frequencies, lab lines, and known printed medicines) and small single-word crops (< 600px)
+  - Above threshold (0.3): surfaced as `"Possible medicine (handwriting model, check the original)"` with confidence
+  - Below threshold (< 0.3): surfaced as `"Unclear"` with top-3 low-confidence possibilities
+  - **Safety constraint**: Never automatically merged into confirmed medicines or patient memory
+- **Clinical Disclaimer**: Research screening prototype only. Closed-set classifier cannot identify unlisted drugs. All outputs require clinical human review.

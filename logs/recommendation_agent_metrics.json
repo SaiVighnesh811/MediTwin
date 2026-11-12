@@ -22,5 +22,17 @@
     "safety_violations_count": 0,
     "clinical_expert_evaluation_status": "PENDING",
     "status": "PASS"
+  },
+  {
+    "timestamp": "2026-11-12T16:26:58.874085Z",
+    "component": "recommendation_agent",
+    "evaluation_type": "SYNTHETIC unit/sanity test (not clinical validation)",
+    "synthetic_cases_tested": 20,
+    "rule_trigger_pass_rate": 1.0,
+    "disclaimer_presence_rate": 1.0,
+    "doctor_note_presence_rate": 1.0,
+    "safety_violations_count": 0,
+    "clinical_expert_evaluation_status": "PENDING",
+    "status": "PASS"
   }
 ]

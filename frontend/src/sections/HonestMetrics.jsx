@@ -79,8 +79,7 @@ export default function HonestMetrics() {
               </p>
             </div>
             <p className={styles.caveat}>
-              Evaluated on synthetic PIL-generated printed images. Handwritten text, low-DPI scans
-              and non-English scripts are not evaluated and may perform significantly worse. The separate 78-medicine handwriting classifier is evaluated in the project reports.
+              Evaluated on synthetic PIL-generated printed images. The separate 78-medicine handwriting classifier is evaluated on the official test split (75.77% top-1 accuracy; 90.26% precision at 0.3 threshold with 75.0% coverage). Predictions are candidate suggestions only and require human verification.
             </p>
           </GlassPanel>
         </Reveal>

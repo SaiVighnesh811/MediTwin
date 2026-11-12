@@ -155,37 +155,97 @@ async def _warmup_sequence():
         await asyncio.sleep(0)
 
     _warming = False
-    logger.info("[WARMUP] All models warm-up complete")
+    logger.info("[WARMUP] All models warm-up and forward passes complete")
 
 
 def _load_risk_and_xai():
     from agents.xai_agent import xai_agent
     xai_agent._ensure_loaded()
+    t_pass = time.time()
+    try:
+        import pandas as pd
+        from agents.coordination.feature_assembler import load_training_defaults
+        base_df = pd.DataFrame([load_training_defaults()])
+        if xai_agent._model is not None:
+            xai_agent._model.predict_proba(base_df)
+        elapsed = round(time.time() - t_pass, 3)
+        logger.info(f"[WARMUP] risk_xai forward pass completed in {elapsed}s")
+    except Exception as e:
+        logger.warning(f"[WARMUP] risk_xai forward pass warning: {e}")
 
 
 def _load_nlp():
     from agents.nlp_agent import nlp_agent as _nlp
     _nlp._load()
+    t_pass = time.time()
+    try:
+        if _nlp._pipeline is not None:
+            _nlp._pipeline("warm up")
+        elapsed = round(time.time() - t_pass, 3)
+        logger.info(f"[WARMUP] nlp forward pass completed in {elapsed}s")
+    except Exception as e:
+        logger.warning(f"[WARMUP] nlp forward pass warning: {e}")
 
 
 def _load_ocr_printed():
     from agents.ocr_agent import ocr_agent as _ocr
     _ocr._load_ocr_reader()
+    t_pass = time.time()
+    try:
+        import numpy as np
+        blank_img = np.zeros((100, 100, 3), dtype=np.uint8)
+        if _ocr._ocr_reader is not None:
+            _ocr._ocr_reader.readtext(blank_img)
+        elapsed = round(time.time() - t_pass, 3)
+        logger.info(f"[WARMUP] ocr_printed forward pass completed in {elapsed}s")
+    except Exception as e:
+        logger.warning(f"[WARMUP] ocr_printed forward pass warning: {e}")
 
 
 def _load_ocr_handwriting():
     from agents.ocr_agent import ocr_agent as _ocr
     _ocr._load_hw_model()
+    t_pass = time.time()
+    try:
+        from PIL import Image
+        blank_crop = Image.new("RGB", (64, 64), color="white")
+        _ocr.classify_handwritten_medicine(blank_crop)
+        elapsed = round(time.time() - t_pass, 3)
+        logger.info(f"[WARMUP] ocr_handwriting forward pass completed in {elapsed}s")
+    except Exception as e:
+        logger.warning(f"[WARMUP] ocr_handwriting forward pass warning: {e}")
 
 
 def _load_image_pediatric():
     from agents.medical_image_agent import medical_image_agent as _mia
     _mia._load_model()
+    t_pass = time.time()
+    try:
+        import torch
+        dummy = torch.zeros(1, 3, 224, 224).to(_mia.DEVICE)
+        with torch.no_grad():
+            if _mia._model is not None:
+                _mia._model(dummy)
+        elapsed = round(time.time() - t_pass, 3)
+        logger.info(f"[WARMUP] image_pediatric forward pass completed in {elapsed}s")
+    except Exception as e:
+        logger.warning(f"[WARMUP] image_pediatric forward pass warning: {e}")
 
 
 def _load_image_adult():
     from agents.medical_image_agent import adult_xray_agent as _axr
     _axr._load_model()
+    t_pass = time.time()
+    try:
+        import torch
+        dummy = torch.zeros(1, 1, 224, 224).to(_axr.DEVICE)
+        with torch.no_grad():
+            if _axr._model is not None:
+                _axr._model(dummy)
+        elapsed = round(time.time() - t_pass, 3)
+        logger.info(f"[WARMUP] image_adult forward pass completed in {elapsed}s")
+    except Exception as e:
+        logger.warning(f"[WARMUP] image_adult forward pass warning: {e}")
 
 
 def start_warmup_task(loop: Optional[asyncio.AbstractEventLoop] = None):

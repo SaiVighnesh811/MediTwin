@@ -6,7 +6,7 @@ import sys
 import json
 import numpy as np
 import pandas as pd
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from fastapi import APIRouter, Depends, File, Form, UploadFile, HTTPException, status
 from pydantic import ValidationError
 
@@ -251,6 +251,9 @@ async def analyze_xray(
 
     temp_path, _ = await validate_and_save_upload(file)
     try:
+        from ml_service.xray_check import validate_xray_plausibility
+        validate_xray_plausibility(temp_path)
+
         def _execute():
             if age_years < 18:
                 # Pediatric path: Kermany ResNet18
@@ -311,20 +314,21 @@ async def ocr_document(
     temp_path, _ = await validate_and_save_upload(file)
     try:
         def _execute():
-            from agents.ocr_agent.ocr_agent import read_printed, extract_fields, classify_handwritten_medicine
-            printed_text = read_printed(temp_path)
-            fields = extract_fields(printed_text) if printed_text else {}
-
+            from agents.ocr_agent.ocr_agent import process_document
+            res = process_document(temp_path, run_handwriting=handwriting)
+            hw_candidates = res.get("handwriting_candidates", [])
             handwriting_top3 = []
-            if handwriting:
-                try:
-                    handwriting_top3 = classify_handwritten_medicine(temp_path)
-                except Exception as e:
-                    handwriting_top3 = [{"error": str(e)}]
+            if handwriting and hw_candidates:
+                first = hw_candidates[0]
+                if first.get("top3"):
+                    handwriting_top3 = first["top3"]
+                elif first.get("name") != "Unclear":
+                    handwriting_top3 = [{"rank": 1, "medicine_name": first["name"], "probability": first["probability"]}]
 
             return sanitize_numpy({
-                "printed_text": printed_text,
-                "extracted_fields": fields,
+                "printed_text": res.get("raw_text", ""),
+                "extracted_fields": res,
+                "handwriting_candidates": hw_candidates,
                 "handwriting_top3": handwriting_top3,
                 "disclaimer": DISCLAIMER_TEXT,
                 "limitations": LIMITATIONS["ocr"],
@@ -356,6 +360,8 @@ async def nlp_entities(req: NLPRequest):
             "symptoms": res.get("symptoms", []),
             "medications": res.get("medications", []),
             "procedures": res.get("procedures", []),
+            "history": res.get("history", []),
+            "family_history": res.get("family_history", []),
             "disclaimer": DISCLAIMER_TEXT,
             "limitations": LIMITATIONS["nlp"],
         })
@@ -372,6 +378,7 @@ async def run_full_analysis(
     text: Optional[str] = Form(None),
     patient_id: Optional[str] = Form(None),
     age_years: Optional[int] = Form(None),
+    use_memory: Optional[Union[bool, str]] = Form(True),
     document_image: Optional[UploadFile] = File(None),
     xray_image: Optional[UploadFile] = File(None),
 ):
@@ -396,6 +403,7 @@ async def run_full_analysis(
 
     if document_image and document_image.filename:
         doc_path, _ = await validate_and_save_upload(document_image)
+
     if xray_image and xray_image.filename:
         if age_years is None:
             raise HTTPException(
@@ -409,13 +417,32 @@ async def run_full_analysis(
             )
         xray_path, _ = await validate_and_save_upload(xray_image)
 
+    # Minimum inputs rule: if fewer than 4 features provided and no document uploaded, reject upfront
+    if len(parsed_profile) < 4 and not doc_path:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": "Please answer at least 4 questions or upload a lab report so a risk estimate is meaningful."}
+        )
+
     try:
+        if xray_path:
+            from ml_service.xray_check import validate_xray_plausibility
+            validate_xray_plausibility(xray_path)
+
+        use_mem_bool = True
+        if use_memory is not None:
+            if isinstance(use_memory, bool):
+                use_mem_bool = use_memory
+            elif isinstance(use_memory, str):
+                use_mem_bool = use_memory.lower() not in ("false", "0", "no", "off")
+
         def _execute():
             from agents.coordination.orchestrator import run_case
             case_data: Dict[str, Any] = {
                 "patient_id": patient_id or "P_WEB_CASE",
                 "patient_profile": parsed_profile,
                 "clinical_notes": text,
+                "use_memory": use_mem_bool,
             }
             if doc_path:
                 case_data["prescription_image"] = doc_path
@@ -431,6 +458,14 @@ async def run_full_analysis(
             risk_info = ctx.get("risk", {})
             feat_assembly = ctx.get("feature_assembly", {})
             count_prov = feat_assembly.get("provided_or_extracted_count", 0)
+
+            # Minimum inputs rule: if fewer than 4 features provided or extracted, reject with 422
+            if count_prov < 4:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={"error": "Please answer at least 4 questions or upload a lab report so a risk estimate is meaningful."}
+                )
+
             pred_cls = risk_info.get("predicted_class", "")
             reliability = compute_reliability(count_prov, pred_cls)
 
@@ -443,6 +478,8 @@ async def run_full_analysis(
                 "errors": case_result.get("errors", {}),
                 "agent_errors": case_result.get("agent_errors", {}),
                 "risk_assessment": risk_info,
+                "sources": feat_assembly.get("sources", {}),
+                "saved_records": feat_assembly.get("saved_records", []),
                 "reliability": reliability,
                 "explainability": {
                     "top_shap_features": ctx.get("xai", {}).get("top_shap_features", []),

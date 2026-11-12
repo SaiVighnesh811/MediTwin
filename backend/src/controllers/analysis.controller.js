@@ -198,6 +198,9 @@ async function runFullAnalysis(req, res, next) {
     if (req.body.text) {
       formData.append('text', req.body.text);
     }
+    if (req.body.use_memory !== undefined) {
+      formData.append('use_memory', String(req.body.use_memory));
+    }
 
     const inputSummary = {
       hasFeatures: Boolean(req.body.features),

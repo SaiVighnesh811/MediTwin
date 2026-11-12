@@ -50,6 +50,7 @@ export default function Wizard() {
   const [xrayFile, setXrayFile] = useState(null);
   const [clinicalText, setClinicalText] = useState('');
   const [uploadError, setUploadError] = useState('');
+  const [useMemory, setUseMemory] = useState(true);
 
   // Timer while running
   useEffect(() => {
@@ -102,6 +103,16 @@ export default function Wizard() {
   async function handleRunAnalysis() {
     setErrorMsg('');
 
+    // Minimum inputs rule: block if fewer than 4 features provided and no document uploaded
+    const brfssPayload = buildBRFSSPayload(formData);
+    const providedCount = Object.keys(brfssPayload).length;
+    if (providedCount < 4 && !docFile) {
+      setErrorMsg(
+        'Please answer at least 4 questions or upload a lab report so a risk estimate is meaningful.',
+      );
+      return;
+    }
+
     // Block submission if an X-ray is attached but no age was entered
     // (age is required to pick the correct X-ray model: pediatric vs adult)
     if (xrayFile && (formData.age === '' || Number.isNaN(Number(formData.age)))) {
@@ -114,12 +125,12 @@ export default function Wizard() {
     setRunning(true);
 
     try {
-      const brfssPayload = buildBRFSSPayload(formData);
       const fd = new FormData();
 
       if (Object.keys(brfssPayload).length > 0) {
         fd.append('features', JSON.stringify(brfssPayload));
       }
+      fd.append('use_memory', String(useMemory));
       if (clinicalText.trim()) {
         fd.append('text', clinicalText.trim());
       }
@@ -313,7 +324,7 @@ export default function Wizard() {
               {/* X-Ray File Upload */}
               <div className={styles.formGroup}>
                 <label className={styles.label}>
-                  Chest X-Ray Image (JPEG/PNG, max 8MB)<span className={styles.required}>*</span>
+                  Upload only a frontal chest X-ray (JPEG or PNG, 8 MB max)<span className={styles.required}>*</span>
                 </label>
                 {!xrayFile ? (
                   <label className={styles.dropzone}>
@@ -667,7 +678,7 @@ export default function Wizard() {
 
                   {/* X-Ray upload */}
                   <div style={{ marginBottom: '1.5rem' }}>
-                    <label className={styles.label}>Chest X-Ray Image (JPEG/PNG, max 8MB)</label>
+                    <label className={styles.label}>Upload only a frontal chest X-ray (JPEG or PNG, 8 MB max)</label>
                     <p style={{ fontSize: '0.78rem', color: 'var(--accent-amber)', margin: '0.2rem 0 0.5rem 0' }}>
                       Screening aid only. Age &lt; 18 routes to pediatric Kermany ResNet18; age &ge; 18 routes to adult TorchXRayVision DenseNet121. Not for clinical diagnostic use.
                     </p>
@@ -771,6 +782,18 @@ export default function Wizard() {
                     <div><strong>Document Uploaded:</strong> {docFile ? docFile.name : 'None'}</div>
                     <div><strong>X-Ray Uploaded:</strong> {xrayFile ? xrayFile.name : 'None'}</div>
                     <div><strong>Clinical Note:</strong> {clinicalText.trim() ? `${clinicalText.length} characters` : 'None'}</div>
+                  </div>
+
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.88rem', userSelect: 'none' }}>
+                      <input
+                        type="checkbox"
+                        checked={useMemory}
+                        onChange={(e) => setUseMemory(e.target.checked)}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      <span>Use my saved records to fill skipped answers</span>
+                    </label>
                   </div>
 
                   <div style={{ padding: '0.75rem 1rem', background: 'var(--bg-surface)', borderLeft: '3px solid var(--accent-teal)', fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>

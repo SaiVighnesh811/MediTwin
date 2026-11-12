@@ -443,4 +443,286 @@ describe('Chapter 14, 14b & 14c: AnalysisResultView Component Tests', () => {
     expect(screen.getByText('Metformin')).toBeTruthy();
     expect(screen.getByText(/dose not read/i)).toBeTruthy();
   });
+
+  it('17. renders "No text could be read from the uploaded image." for empty OCR document and unclear flags', () => {
+    // 1. Empty OCR document uploaded
+    const mockEmptyDoc = {
+      type: 'analyze',
+      result: {
+        risk_assessment: { predicted_class: 'Low', probabilities: { Low: 0.9, Medium: 0.05, High: 0.05 } },
+        reliability: { level: 'high', reasons: [] },
+        ocr_findings: {
+          medicines: [],
+          labs: [],
+          raw_text: '',
+          uploaded: true,
+        },
+      },
+    };
+    const { rerender } = render(<AnalysisResultView data={mockEmptyDoc} />);
+    expect(screen.getByText('No text could be read from the uploaded image.')).toBeTruthy();
+    expect(screen.queryByText('No document uploaded')).toBeNull();
+
+    // 2. Unclear dose and unit flags
+    const mockUnclear = {
+      type: 'analyze',
+      result: {
+        risk_assessment: { predicted_class: 'Low', probabilities: { Low: 0.9, Medium: 0.05, High: 0.05 } },
+        reliability: { level: 'high', reasons: [] },
+        ocr_findings: {
+          medicines: [
+            { medicine: 'Amlodipine', dosage: null, dose_unclear: true, frequency: 'once daily', duration: '30 days' },
+          ],
+          labs: [
+            { test: 'Total Cholesterol', value: '195', unit: null, unit_unclear: true, reference: '< 200', flag: 'within' },
+          ],
+        },
+      },
+    };
+    rerender(<AnalysisResultView data={mockUnclear} />);
+    expect(screen.getByText(/dose unclear - check the original/i)).toBeTruthy();
+    expect(screen.getByText(/unit unclear/i)).toBeTruthy();
+  });
+
+  it('18. Chapter 16e: renders handwriting candidates above threshold and unclear with top3 below threshold', () => {
+    const mockHw = {
+      type: 'analyze',
+      result: {
+        risk_assessment: { predicted_class: 'Low', probabilities: { Low: 0.9, Medium: 0.05, High: 0.05 } },
+        reliability: { level: 'high', reasons: [] },
+        ocr_findings: {
+          medicines: [],
+          labs: [],
+          raw_text: 'sample',
+          handwriting_candidates: [
+            {
+              name: 'Aceta',
+              probability: 0.85,
+              top3: [
+                { rank: 1, medicine_name: 'Aceta', probability: 0.85 },
+                { rank: 2, medicine_name: 'Napa', probability: 0.08 },
+                { rank: 3, medicine_name: 'Parpy', probability: 0.03 },
+              ],
+              source: 'handwriting_model',
+            },
+            {
+              name: 'Unclear',
+              probability: 0.22,
+              top3: [
+                { rank: 1, medicine_name: 'Amlodipine', probability: 0.22 },
+                { rank: 2, medicine_name: 'Metformin', probability: 0.18 },
+                { rank: 3, medicine_name: 'Losartan', probability: 0.15 },
+              ],
+              source: 'handwriting_model',
+            },
+          ],
+        },
+      },
+    };
+
+    render(<AnalysisResultView data={mockHw} />);
+    expect(screen.getByText(/Possible medicine \(handwriting model, check the original\):/i)).toBeTruthy();
+    expect(screen.getByText('Aceta')).toBeTruthy();
+    expect(screen.getByText(/\(85%\)/)).toBeTruthy();
+
+    expect(screen.getByText(/1 handwriting region was unclear/i)).toBeTruthy();
+    expect(screen.getByText(/low confidence, do not rely on this: Amlodipine \(22%\), Metformin \(18%\), Losartan \(15%\)/i)).toBeTruthy();
+  });
+
+  it('19. Chapter 16f: renders collapsed unclear line, frequency unclear, and printed flag', () => {
+    const mock16f = {
+      type: 'analyze',
+      result: {
+        risk_assessment: { predicted_class: 'Low', probabilities: { Low: 0.9, Medium: 0.05, High: 0.05 } },
+        reliability: { level: 'high', reasons: [] },
+        ocr_findings: {
+          medicines: [
+            {
+              medicine: 'Metformin',
+              dosage: '500 mg',
+              frequency: null,
+              frequency_unclear: true,
+              duration: '30 days',
+            },
+          ],
+          labs: [
+            {
+              test: 'Fasting Blood Glucose',
+              value: '110',
+              unit: 'mg/dL',
+              reference: '70 100',
+              reference_inferred: true,
+              flag: 'above',
+              flag_printed: 'H',
+            },
+            {
+              test: 'Total Cholesterol',
+              value: '195',
+              unit: 'mg/dL',
+              reference: '200 ;',
+              reference_unclear: true,
+              flag: null,
+            },
+          ],
+          raw_text: 'sample',
+          unclear_regions: 3,
+          handwriting_candidates: [],
+        },
+      },
+    };
+
+    render(<AnalysisResultView data={mock16f} />);
+    expect(screen.getByText(/frequency unclear - check the original/i)).toBeTruthy();
+    expect(screen.getByText(/printed flag: H/i)).toBeTruthy();
+    expect(screen.getByText(/reference inferred: 70 100/i)).toBeTruthy();
+    expect(screen.getByText(/reference unclear/i)).toBeTruthy();
+    expect(screen.getByText(/3 handwriting regions were unclear/i)).toBeTruthy();
+  });
+
+  it('20. Chapter 16b: renders Family history chips and x-counts (x3)', () => {
+    const mock16b = {
+      type: 'analyze',
+      result: {
+        risk_assessment: { predicted_class: 'Low', probabilities: { Low: 0.9, Medium: 0.05, High: 0.05 } },
+        reliability: { level: 'high', reasons: [] },
+        nlp_entities: {
+          symptoms: [
+            { text: 'cough', count: 3, negated: false },
+          ],
+          family_history: [
+            { text: 'type 2 diabetes', count: 1, negated: false, subject: 'family' },
+            { text: 'hypertension', count: 1, negated: false, subject: 'family' },
+          ],
+        },
+      },
+    };
+
+    render(<AnalysisResultView data={mock16b} />);
+    expect(screen.getByText('Biomedical Entities (Clinical Notes NER)')).toBeTruthy();
+    expect(screen.getByText('Family History (2)')).toBeTruthy();
+    expect(screen.getByText('type 2 diabetes')).toBeTruthy();
+    expect(screen.getByText('hypertension')).toBeTruthy();
+    expect(screen.getByText('Symptoms (1)')).toBeTruthy();
+    expect(screen.getByText('cough')).toBeTruthy();
+    expect(screen.getByText('x3')).toBeTruthy();
+  });
+
+  it('21. Chapter 16 Final: splits Input completeness and Model reliability banners, and renders saved records', () => {
+    const mock16Final = {
+      type: 'analyze',
+      result: {
+        risk_assessment: {
+          predicted_class: 'Medium',
+          probabilities: { Low: 0.1, Medium: 0.85, High: 0.05 },
+          completeness: '19 of 21 provided or extracted, 2 assumed',
+          saved_records: [
+            { feature: 'HighBP', value: 1.0, saved_text: 'Amlodipine 5mg' },
+            { feature: 'HighChol', value: 1.0, saved_text: 'Total Cholesterol: 240 mg/dL', date: '2025-05-01T10:00:00' },
+          ],
+        },
+        reliability: {
+          level: 'high',
+          completeness_level: 'high',
+          reasons: [
+            '19 of 21 features were provided or extracted.',
+            "Predicted class is 'Medium' (Prediabetes), which has low precision and high uncertainty.",
+          ],
+        },
+      },
+    };
+
+    render(<AnalysisResultView data={mock16Final} />);
+
+    // 1. Separate Input completeness banner showing high completeness
+    expect(screen.getByText(/Input completeness: high/i)).toBeTruthy();
+
+    // 2. Separate Model reliability banner showing Medium class low reliability
+    expect(screen.getByText(/Medium class: low reliability/i)).toBeTruthy();
+
+    // 3. Saved records listed under the exact specified title
+    expect(screen.getByText('Filled from your saved records (not answered by you)')).toBeTruthy();
+    expect(screen.getByText(/High blood pressure:/i)).toBeTruthy();
+    expect(screen.getByText(/Amlodipine 5mg/i)).toBeTruthy();
+    expect(screen.getByText(/Total Cholesterol: 240 mg\/dL/i)).toBeTruthy();
+  });
+
+  it('22. Chapter 16 Final: formatDuration normalizes "30 day" to "30 days" and keeps "1 day" singular', () => {
+    const mockOcrDurations = {
+      type: 'analyze',
+      result: {
+        risk_assessment: { predicted_class: 'Low', probabilities: { Low: 0.9, Medium: 0.05, High: 0.05 } },
+        reliability: { level: 'high', reasons: [] },
+        ocr_findings: {
+          medicines: [
+            { medicine: 'Metformin', dosage: '500 mg', frequency: 'twice daily', duration: '30 day' },
+            { medicine: 'Paracetamol', dosage: '500 mg', frequency: 'as needed', duration: '1 day' },
+          ],
+        },
+      },
+    };
+
+    render(<AnalysisResultView data={mockOcrDurations} />);
+    expect(screen.getByText(/30 days/i)).toBeTruthy();
+    expect(screen.getByText(/1 day\b/i)).toBeTruthy();
+  });
+
+  it('23. Chapter 17: Medicine-aware guidance, "Based on:" lines, and inferred medicine markers', () => {
+    const mock17 = {
+      type: 'analyze',
+      result: {
+        risk_assessment: {
+          predicted_class: 'Low',
+          probabilities: { Low: 0.9, Medium: 0.05, High: 0.05 },
+          saved_records: [
+            {
+              feature: 'HighBP',
+              value: 1.0,
+              saved_text: 'Medication: Amlodipine 5mg',
+              date: '2026-11-10',
+              inferred_from_medicine: true,
+            },
+          ],
+        },
+        reliability: { level: 'high', reasons: [] },
+        recommendations: [
+          {
+            rule_id: 'REC_BP_HIGH',
+            title: 'Blood Pressure Attention',
+            text: 'Blood pressure management: Adopt sodium reduction, DASH dietary patterns.',
+            based_on: 'saved record: high blood pressure = yes',
+          },
+          {
+            rule_id: 'REC_MED_AMLODIPINE_0',
+            title: 'Medicines found in your document',
+            category: 'medicines',
+            text: 'Amlodipine: dose unclear. Common use: blood pressure, and also chest pain. Extracted from your document - check it against the original and confirm with your doctor or pharmacist. Do not start, stop or change any medicine because of this page. Note: listed more than once; please check Note: You listed a medicine commonly used for blood pressure but answered No to blood pressure; please check your answers.',
+            based_on: 'uploaded document: Amlodipine',
+            notes: [
+              'listed more than once; please check',
+              'You listed a medicine commonly used for blood pressure but answered No to blood pressure; please check your answers.',
+            ],
+          },
+        ],
+      },
+    };
+
+    render(<AnalysisResultView data={mock17} />);
+
+    // 1. "Based on:" lines rendered
+    expect(screen.getAllByText(/Based on:/i).length).toBe(2);
+    expect(screen.getByText(/saved record: high blood pressure = yes/i)).toBeTruthy();
+    expect(screen.getByText(/uploaded document: Amlodipine/i)).toBeTruthy();
+
+    // 2. Medicine card with "dose unclear"
+    expect(screen.getByText(/Medicines found in your document/i)).toBeTruthy();
+    expect(screen.getByText(/dose unclear/i)).toBeTruthy();
+    expect(screen.getByText(/blood pressure, and also chest pain/i)).toBeTruthy();
+
+    // 3. Consistency notes
+    expect(screen.getByText(/listed more than once; please check/i)).toBeTruthy();
+    expect(screen.getByText(/You listed a medicine commonly used for blood pressure but answered No to blood pressure; please check your answers./i)).toBeTruthy();
+
+    // 4. Inferred from medicine label
+    expect(screen.getByText(/\(inferred from a medicine; this medicine can also be used for other conditions, please verify\)/i)).toBeTruthy();
+  });
 });

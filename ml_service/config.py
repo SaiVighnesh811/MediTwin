@@ -34,7 +34,8 @@ LIMITATIONS = {
     "image": [
         "ResNet18 binary classifier trained on pediatric chest X-ray Kermany dataset (Guangzhou Women and Children's Medical Center).",
         "Official test set metrics: 98.5% recall, 62.0% specificity (high false positive rate on normal scans).",
-        "Single-center pediatric cohort; not calibrated across adult demographics; screening aid only, not for clinical use."
+        "Single-center pediatric cohort; not calibrated across adult demographics; screening aid only, not for clinical use.",
+        "A simple image check cannot recognise every non-chest image (for example an X-ray of another body part)."
     ],
     "ocr": [
         "EasyOCR printed reader evaluated on synthetic documents only; character error rate may be higher on real hospital scans.",

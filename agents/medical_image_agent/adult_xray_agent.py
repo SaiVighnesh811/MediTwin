@@ -175,6 +175,7 @@ def predict_adult_xray(image_path: str) -> dict:
                 "affect model outputs."
             ),
             "Performance of this model was not independently measured in this project.",
+            "A simple image check cannot recognise every non-chest image (for example an X-ray of another body part).",
         ],
     }
 

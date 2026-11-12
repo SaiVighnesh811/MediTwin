@@ -368,6 +368,7 @@ export const RULE_TITLES = {
 
 export function formatRuleTitle(ruleId) {
   if (!ruleId) return 'Guidance Recommendation';
+  if (ruleId.startsWith('REC_MED')) return 'Medicines found in your document';
   if (RULE_TITLES[ruleId]) return RULE_TITLES[ruleId];
   const fc = formatCondition(ruleId);
   if (fc) return fc;
@@ -684,41 +685,50 @@ export function getGroupedEntities(nlp) {
     return merged;
   }
 
+  const notFamily = (e) => e && e.subject !== 'family';
+
+  // 0. Family History: from nlp.family_history or fallback to entities with subject === 'family'
+  const rawFamilyHistory = Array.isArray(nlp.family_history) && nlp.family_history.length > 0
+    ? nlp.family_history
+    : (Array.isArray(nlp.entities) ? nlp.entities : []).filter((e) => e.subject === 'family');
+
   // 1. Conditions: from nlp.diseases and nlp.history, or fallback to entities with DIS_SYM/DISEASE/History
   const rawConditions = Array.isArray(nlp.diseases) && nlp.diseases.length > 0
-    ? [...nlp.diseases, ...(Array.isArray(nlp.history) ? nlp.history : [])]
+    ? [...nlp.diseases.filter(notFamily), ...(Array.isArray(nlp.history) ? nlp.history.filter(notFamily) : [])]
     : (Array.isArray(nlp.entities) ? nlp.entities : []).filter(
-        (e) => e.group === 'DIS_SYM' || e.group === 'DISEASE' || e.entity_type === 'History'
+        (e) => notFamily(e) && (e.group === 'DIS_SYM' || e.group === 'DISEASE' || e.entity_type === 'History')
       );
 
   // 2. Medications: from nlp.medications or fallback to entities with MEDICATION
   const rawMedications = Array.isArray(nlp.medications) && nlp.medications.length > 0
-    ? nlp.medications
-    : (Array.isArray(nlp.entities) ? nlp.entities : []).filter((e) => e.group === 'MEDICATION');
+    ? nlp.medications.filter(notFamily)
+    : (Array.isArray(nlp.entities) ? nlp.entities : []).filter((e) => notFamily(e) && e.group === 'MEDICATION');
 
   // 3. Symptoms: from nlp.symptoms or fallback to entities with SYMPTOM
   const rawSymptoms = Array.isArray(nlp.symptoms) && nlp.symptoms.length > 0
-    ? nlp.symptoms
-    : (Array.isArray(nlp.entities) ? nlp.entities : []).filter((e) => e.group === 'SYMPTOM');
+    ? nlp.symptoms.filter(notFamily)
+    : (Array.isArray(nlp.entities) ? nlp.entities : []).filter((e) => notFamily(e) && e.group === 'SYMPTOM');
 
   // 4. Procedures: from nlp.procedures or fallback to entities with PROCEDURE
   const rawProcedures = Array.isArray(nlp.procedures) && nlp.procedures.length > 0
-    ? nlp.procedures
-    : (Array.isArray(nlp.entities) ? nlp.entities : []).filter((e) => e.group === 'PROCEDURE');
+    ? nlp.procedures.filter(notFamily)
+    : (Array.isArray(nlp.entities) ? nlp.entities : []).filter((e) => notFamily(e) && e.group === 'PROCEDURE');
 
-  // Deduplicate by lower-case text within each group
+  // Deduplicate by lower-case text within each group, tracking count
   function dedupeMerged(list) {
     const merged = mergeTokens(list);
-    const seen = new Set();
-    const result = [];
+    const seen = new Map();
     for (const item of merged) {
       const key = item.text.toLowerCase();
       if (!seen.has(key)) {
-        seen.add(key);
-        result.push(item);
+        seen.set(key, { ...item, count: item.count || 1 });
+      } else {
+        const existing = seen.get(key);
+        existing.count = (existing.count || 1) + (item.count || 1);
+        if (item.negated) existing.negated = true;
       }
     }
-    return result;
+    return Array.from(seen.values());
   }
 
   return {
@@ -726,6 +736,7 @@ export function getGroupedEntities(nlp) {
     Medication: dedupeMerged(rawMedications),
     Symptom: dedupeMerged(rawSymptoms),
     Procedure: dedupeMerged(rawProcedures),
+    'Family History': dedupeMerged(rawFamilyHistory),
   };
 }
 
@@ -738,7 +749,18 @@ export function parseOCRFindings(ocr) {
   }
 
   const rawText = ocr.printed_text || ocr.text || ocr.raw_text || null;
-  const handwriting = Array.isArray(ocr.handwriting_top3) ? ocr.handwriting_top3 : [];
+  const rawHw = Array.isArray(ocr.handwriting_candidates)
+    ? ocr.handwriting_candidates
+    : (Array.isArray(ocr.handwriting_top3) ? ocr.handwriting_top3 : []);
+
+  const handwriting = rawHw.map(h => ({
+    ...h,
+    name: h.name || h.medicine || h.medicine_name || '',
+    medicine: h.medicine || h.name || h.medicine_name || '',
+    probability: h.probability !== undefined ? h.probability : (h.confidence !== undefined ? h.confidence : 0),
+    confidence: h.confidence !== undefined ? h.confidence : (h.probability !== undefined ? h.probability : 0),
+    top3: Array.isArray(h.top3) ? h.top3 : []
+  }));
 
   let medicines = Array.isArray(ocr.medicines) ? [...ocr.medicines] : [];
   let labValues = Array.isArray(ocr.labs) ? [...ocr.labs] : (Array.isArray(ocr.labValues) ? [...ocr.labValues] : []);
@@ -760,6 +782,10 @@ export function parseOCRFindings(ocr) {
     }
   }
 
-  const hasOcr = medicines.length > 0 || labValues.length > 0 || rawList.length > 0 || !!rawText || handwriting.length > 0;
-  return { hasOcr, rawText, medicines, labValues, handwriting };
+  const unclearRegions = typeof ocr.unclear_regions === 'number'
+    ? ocr.unclear_regions
+    : (ocr.handwriting_candidates ? ocr.handwriting_candidates.filter(h => h.name === 'Unclear').length : 0);
+
+  const hasOcr = medicines.length > 0 || labValues.length > 0 || rawList.length > 0 || !!rawText || handwriting.length > 0 || unclearRegions > 0;
+  return { hasOcr, rawText, medicines, labValues, handwriting, unclearRegions };
 }

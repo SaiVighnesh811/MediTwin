@@ -301,6 +301,13 @@
   color: #bae6fd;
 }
 
+.chip_FamilyHistory,
+.chip_Family_History {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: #a855f7;
+  color: #d8b4fe;
+}
+
 .negatedTag {
   display: inline-block;
   margin-left: 0.4rem;

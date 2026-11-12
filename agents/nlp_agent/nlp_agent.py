@@ -57,38 +57,189 @@ KEY_MAP = {
     "MEDICATION": "medications",
     "PROCEDURE": "procedures",
     "HISTORY": "history",
+    "FAMILY_HISTORY": "family_history",
 }
 
-# Negation cue patterns (heuristic check within preceding words)
-NEGATION_PATTERNS = [
-    r"\bno\b",
-    r"\bdenies\b",
-    r"\bwithout\b",
-    r"\bnegative\s+for\b",
-    r"\bnot\b",
+# ── Clause & Cue Patterns ──────────────────────────────────────────────────────
+# Clause ends at ., ;, :, or conjunctions (but, however, although, though, except)
+CLAUSE_SPLIT_RE = re.compile(
+    r"([;:\n!?]+|\.(?!\d)|\b(?:but|however|although|though|except)\b)",
+    re.IGNORECASE
+)
+
+# Negation cue pattern (negates entities until end of clause)
+NEGATION_CUE_RE = re.compile(
+    r"\b(no|not|denies|denied|without|negative\s+for|free\s+of)\b",
+    re.IGNORECASE
+)
+
+# Family history cues
+FAMILY_CUE_RE = re.compile(
+    r"\b(father|mother|brother|sister|parent|parents|grandfather|grandmother|grandparent|grandparents|family\s+history\s+of|family\s+history|\bfh\b)\b",
+    re.IGNORECASE
+)
+
+STOPLIST = {"pt", "pateint", "patient"}
+DOSAGE_RE = re.compile(r"(\d+(?:\.\d+)?)\s*(mg|mcg|ug|g|ml|iu|units?)\b", re.IGNORECASE)
+DOSE_PHRASE_RE = re.compile(r"^\s*(\d+(?:\.\d+)?\s*(?:mg|mcg|ug|g|ml)(?:\s+(?:daily|once\s+daily|twice\s+daily|bd|bid|tds|tid|qid|od|hs|prn|[a-z0-9]+))*\s*)$", re.IGNORECASE)
+DIGITS_SLASHES_RE = re.compile(r"^[\d/\s\.\-]+$")
+DATE_RE = re.compile(
+    r"^(?:\d{1,4}[-/\.]\d{1,2}[-/\.]\d{1,4}|(?:\d{1,2}\s+)?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*(?:\s+\d{1,2})?(?:,?\s+\d{2,4})?)$",
+    re.IGNORECASE
+)
+DROP_SINGLE_WORDS = {"father", "mother", "sister", "brother", "mild", "moderate", "severe", "bp", "blood pressure"}
+
+# ── Rule Lexicons (abbreviation/term, canonical_text, entity_type, group) ──────
+RULE_LEXICONS = [
+    # Diseases / Conditions
+    ("htn", "hypertension", "Disease_disorder", "DISEASE"),
+    ("t2dm", "type 2 diabetes mellitus", "Disease_disorder", "DISEASE"),
+    ("t1dm", "diabetes mellitus", "Disease_disorder", "DISEASE"),
+    ("dm", "diabetes mellitus", "Disease_disorder", "DISEASE"),
+    ("cad", "coronary artery disease", "Disease_disorder", "DISEASE"),
+    ("mi", "myocardial infarction", "Disease_disorder", "DISEASE"),
+    ("ckd", "chronic kidney disease", "Disease_disorder", "DISEASE"),
+    ("copd", "chronic obstructive pulmonary disease", "Disease_disorder", "DISEASE"),
+    ("hld", "hyperlipidemia", "Disease_disorder", "DISEASE"),
+    ("hypertention", "hypertension", "Disease_disorder", "DISEASE"),
+    ("diabetis", "diabetes mellitus", "Disease_disorder", "DISEASE"),
+    # Symptoms
+    ("sob", "shortness of breath", "Sign_symptom", "SYMPTOM"),
+    ("shortness of breath", "shortness of breath", "Sign_symptom", "SYMPTOM"),
+    ("chest pain", "chest pain", "Sign_symptom", "SYMPTOM"),
+    ("sore throat", "sore throat", "Sign_symptom", "SYMPTOM"),
+    ("fever", "fever", "Sign_symptom", "SYMPTOM"),
+    ("nausea", "nausea", "Sign_symptom", "SYMPTOM"),
+    ("vomiting", "vomiting", "Sign_symptom", "SYMPTOM"),
+    ("cough", "cough", "Sign_symptom", "SYMPTOM"),
+    ("headache", "headache", "Sign_symptom", "SYMPTOM"),
+    ("dizziness", "dizziness", "Sign_symptom", "SYMPTOM"),
+    ("fatigue", "fatigue", "Sign_symptom", "SYMPTOM"),
+    ("diarrhea", "diarrhea", "Sign_symptom", "SYMPTOM"),
+    ("rash", "rash", "Sign_symptom", "SYMPTOM"),
 ]
-NEGATION_REGEX = re.compile(r"(" + "|".join(NEGATION_PATTERNS) + r")", re.IGNORECASE)
+# Sort by pattern length descending
+RULE_LEXICONS = sorted(RULE_LEXICONS, key=lambda x: len(x[0]), reverse=True)
+
+_all_known_meds_cache = None
+
+
+def get_known_medicines() -> set:
+    """Returns set of known medicine names (78 classes + EXTRA_MEDS)."""
+    global _all_known_meds_cache
+    if _all_known_meds_cache is not None:
+        return _all_known_meds_cache
+    classes = set()
+    try:
+        from agents.ocr_agent.ocr_agent import EXTRA_MEDS, CKPT_PATH
+        if os.path.exists(CKPT_PATH):
+            ckpt = torch.load(CKPT_PATH, map_location="cpu")
+            classes = set(ckpt.get("classes", []))
+        _all_known_meds_cache = classes | EXTRA_MEDS
+    except Exception:
+        _all_known_meds_cache = set()
+    return _all_known_meds_cache
+
+
+def split_clauses(text: str) -> list:
+    """
+    Splits text into clauses delimited by ., ;, :, \\n, !, ? or conjunctions
+    (but, however, although, though, except). Lists with commas or 'and' remain
+    inside the same clause.
+    Returns list of (c_start, c_end, clause_text).
+    """
+    clauses = []
+    last_end = 0
+    for m in CLAUSE_SPLIT_RE.finditer(text):
+        is_conjunction = bool(re.match(r"\b(?:but|however|although|though|except)\b", m.group(), re.I))
+        if is_conjunction:
+            c_text = text[last_end:m.start()]
+            if c_text.strip():
+                clauses.append((last_end, m.start(), c_text))
+            last_end = m.start()
+        else:
+            c_text = text[last_end:m.end()]
+            if c_text.strip():
+                clauses.append((last_end, m.end(), c_text))
+            last_end = m.end()
+    if last_end < len(text):
+        c_text = text[last_end:]
+        if c_text.strip():
+            clauses.append((last_end, len(text), c_text))
+    return clauses
+
+
+def get_clause_for_span(clauses: list, start: int, end: int):
+    for c_start, c_end, c_text in clauses:
+        if c_start <= start and end <= c_end:
+            return (c_start, c_end, c_text)
+    for c_start, c_end, c_text in clauses:
+        if c_start <= start < c_end:
+            return (c_start, c_end, c_text)
+    return (0, len(clauses[-1][2]) if clauses else 0, "")
+
+
+def _in_same_sentence(text: str, s1: int, e1: int, s2: int, e2: int) -> bool:
+    """Checks whether two spans reside within the same sentence (no sentence terminators between them)."""
+    if s1 > s2:
+        s1, e1, s2, e2 = s2, e2, s1, e1
+    inter = text[e1:s2]
+    return not bool(re.search(r"[!?\n]|(?<!\d)\.(?!\d)", inter))
+
+
+def evaluate_span(clauses: list, start: int, end: int, text: str = ""):
+    """
+    Evaluates whether an entity span has subject 'family' or 'patient',
+    and whether it is negated (cue preceding entity in clause).
+    """
+    c_start, c_end, c_text = get_clause_for_span(clauses, start, end)
+    is_family = bool(FAMILY_CUE_RE.search(c_text))
+    if not is_family and text:
+        # Check if preceded in the same sentence by a family history cue
+        last_break = max([text.rfind(sep, 0, start) for sep in (".", "\n", "!", "?")] + [-1])
+        prefix = text[last_break + 1:start]
+        if FAMILY_CUE_RE.search(prefix) and not re.search(r"\b(?:but|however|although|though|except)\b", prefix, re.I):
+            is_family = True
+    subject = "family" if is_family else "patient"
+
+    clause_neg_cues = [c_start + m.start() for m in NEGATION_CUE_RE.finditer(c_text)]
+    negated = any(cue_pos <= start or (start <= cue_pos < end) for cue_pos in clause_neg_cues)
+
+    return subject, negated
+
+
+def find_rule_entities(text: str) -> list:
+    """
+    Finds rule entities in text (abbreviations and missed symptoms) with character spans.
+    """
+    rule_entities = []
+    matched_spans = []
+
+    for pattern, canonical, etype, grp in RULE_LEXICONS:
+        regex = re.compile(r"\b" + re.escape(pattern) + r"\b", re.IGNORECASE)
+        for m in regex.finditer(text):
+            s, e = m.start(), m.end()
+            if any(ms <= s and e <= me for ms, me in matched_spans):
+                continue
+            matched_spans.append((s, e))
+            rule_entities.append({
+                "text": canonical,
+                "raw_text": m.group(0),
+                "entity_type": etype,
+                "group": grp,
+                "confidence": 1.0,
+                "start": s,
+                "end": e,
+                "source": "rule",
+            })
+    return rule_entities
 
 
 def check_negation(text: str, start: int, max_words_before: int = 5) -> bool:
-    """
-    Heuristic negation detection.
-    Looks up to `max_words_before` words immediately preceding `start` for negation cues,
-    or checks if the entity span itself begins with a negation cue (e.g. 'no history of ...').
-    Returns True if a negation cue is found without intervening sentence boundaries.
-    """
-    # 1. Check if the entity text starting at start begins with a negation pattern
-    first_two_words = text[start:].strip().split()[:2]
-    if first_two_words and NEGATION_REGEX.search(" ".join(first_two_words)):
-        return True
-
-    # 2. Check preceding window
-    prefix = text[:start]
-    clauses = re.split(r"[.;,]", prefix)
-    target_clause = clauses[-1] if clauses else prefix
-    words = target_clause.strip().split()
-    search_window = " ".join(words[-max_words_before:]) if words else ""
-    return bool(NEGATION_REGEX.search(search_window))
+    """Backward compatibility wrapper for negation detection."""
+    clauses = split_clauses(text)
+    _, negated = evaluate_span(clauses, start, start + 1)
+    return negated
 
 # ── Module-level cached model (lazy singleton) ─────────────────────────────────
 _model     = None
@@ -151,6 +302,8 @@ def extract_entities(text: str) -> dict:
             "symptoms": [],
             "medications": [],
             "procedures": [],
+            "history": [],
+            "family_history": [],
             "entities": [],
         }
 
@@ -171,35 +324,180 @@ def extract_entities(text: str) -> dict:
                 continue
         merged.append(dict(ent))
 
-    # Format result structure
-    result = {
-        "diseases": [],
-        "symptoms": [],
-        "medications": [],
-        "procedures": [],
-        "history": [],
-        "entities": [],
-    }
+    clauses = split_clauses(text)
+    rule_ents = find_rule_entities(text)
 
+    claimed_rule_indices = set()
+    processed_entities = []
+
+    # 1. Process merged model entities
     for item in merged:
         s = int(item["start"])
         e = int(item["end"])
         span_text = text[s:e].strip()
         etype = item["entity_group"]
         grp = GROUP_MAP.get(etype, "OTHER")
-        negated = check_negation(text, s)
-        structured_item = {
+        src = "model"
+
+        # Check if overlaps with any rule entity
+        for r_idx, rent in enumerate(rule_ents):
+            if not (e <= rent["start"] or s >= rent["end"]):
+                span_text = rent["text"]
+                etype = rent["entity_type"]
+                grp = rent["group"]
+                src = "rule"
+                claimed_rule_indices.add(r_idx)
+                break
+
+        processed_entities.append({
             "text": span_text,
             "entity_type": etype,
             "group": grp,
             "confidence": round(float(item["score"]), 4),
             "start": s,
             "end": e,
-            "negated": negated,
+            "source": src,
+        })
+
+    # 2. Add unclaimed rule entities
+    for r_idx, rent in enumerate(rule_ents):
+        if r_idx not in claimed_rule_indices:
+            processed_entities.append(rent)
+
+    # 3. Attach dose phrases from OTHER entities to nearest MEDICATION in the same sentence
+    med_candidates = [e for e in processed_entities if e.get("group") == "MEDICATION"]
+    for ent in processed_entities:
+        if ent.get("group") == "OTHER":
+            t_str = ent.get("text", "").strip()
+            if DOSE_PHRASE_RE.search(t_str) or re.search(r"^\d+(?:\.\d+)?\s*(?:mg|mcg|ug|g|ml)\b", t_str, re.I):
+                # Find nearest medication in same sentence
+                best_med = None
+                best_dist = float("inf")
+                for med in med_candidates:
+                    if _in_same_sentence(text, ent["start"], ent["end"], med["start"], med["end"]):
+                        dist = min(abs(ent["start"] - med["end"]), abs(med["start"] - ent["end"]))
+                        if dist < best_dist:
+                            best_dist = dist
+                            best_med = med
+                if best_med is not None and "dose" not in best_med:
+                    best_med["dose"] = t_str
+
+    # 4. Filter and evaluate
+    all_meds = get_known_medicines()
+    try:
+        from agents.ocr_agent.ocr_agent import match_medicine
+    except Exception:
+        match_medicine = None
+
+    valid_entities = []
+    for ent in processed_entities:
+        ent_text = ent["text"].strip()
+        lower_text = ent_text.lower()
+
+        # Drop group OTHER entirely (never returned in entities)
+        if ent.get("group") == "OTHER":
+            continue
+
+        # Drop punctuation-only
+        if not re.search(r"[a-zA-Z0-9]", ent_text):
+            continue
+
+        # Drop 2 characters or fewer (e.g. "Pt", "BP", "/")
+        if len(ent_text) <= 2:
+            continue
+
+        # Drop single words: Father, Mother, Sister, Brother, mild, moderate, severe, etc.
+        if lower_text in DROP_SINGLE_WORDS or lower_text in STOPLIST:
+            continue
+
+        # Drop anything that is only a date or only digits/slashes (e.g. 12/03/2025, 150/95)
+        if DIGITS_SLASHES_RE.match(ent_text) or DATE_RE.match(lower_text):
+            continue
+
+        # Medication filter:
+        # A MEDICATION entity must match the known medicine list (with same fuzzy match),
+        # or be followed within 3 tokens by a dose, or have an attached dose; otherwise drop it.
+        if ent["group"] == "MEDICATION":
+            is_known = False
+            if match_medicine is not None and all_meds:
+                matched_name, _, _, _ = match_medicine(ent_text, all_meds)
+                if matched_name:
+                    is_known = True
+
+            has_dose = bool(ent.get("dose"))
+            ent_end = ent.get("end", 0)
+            if not has_dose and ent_end <= len(text):
+                trailing_tokens = text[ent_end:].strip().split()[:3]
+                if trailing_tokens and DOSAGE_RE.search(" ".join(trailing_tokens)):
+                    has_dose = True
+
+            if not is_known and not has_dose:
+                continue
+
+        subject, negated = evaluate_span(clauses, ent["start"], ent["end"], text=text)
+        ent["subject"] = subject
+        ent["negated"] = negated
+        valid_entities.append(ent)
+
+    # 4. Deduplicate by (lowercase text, group, negated, subject) with count; cap at 30
+    deduped = []
+    seen = {}
+
+    for ent in valid_entities:
+        key = (
+            ent["text"].strip().lower(),
+            ent["group"],
+            bool(ent.get("negated", False)),
+            ent.get("subject", "patient"),
+        )
+        if key in seen:
+            idx = seen[key]
+            deduped[idx]["count"] += 1
+            deduped[idx]["confidence"] = max(deduped[idx]["confidence"], ent["confidence"])
+        else:
+            c_ent = dict(ent)
+            c_ent["count"] = 1
+            seen[key] = len(deduped)
+            deduped.append(c_ent)
+
+    deduped = deduped[:30]
+
+    result = {
+        "diseases": [],
+        "symptoms": [],
+        "medications": [],
+        "procedures": [],
+        "history": [],
+        "family_history": [],
+        "entities": deduped,
+    }
+
+    for ent in deduped:
+        subj = ent.get("subject", "patient")
+        grp = ent["group"]
+        c_item = {
+            "text": ent["text"],
+            "start": ent.get("start", 0),
+            "end": ent.get("end", 0),
+            "negated": ent.get("negated", False),
+            "count": ent.get("count", 1),
+            "subject": subj,
+            "source": ent.get("source", "model"),
         }
-        result["entities"].append(structured_item)
-        if grp in KEY_MAP:
-            result[KEY_MAP[grp]].append({"text": span_text, "start": s, "end": e, "negated": negated})
+        if "dose" in ent:
+            c_item["dose"] = ent["dose"]
+        if subj == "family":
+            result["family_history"].append(c_item)
+        elif grp == "DISEASE":
+            result["diseases"].append(c_item)
+        elif grp == "SYMPTOM":
+            result["symptoms"].append(c_item)
+        elif grp == "MEDICATION":
+            result["medications"].append(c_item)
+        elif grp == "PROCEDURE":
+            result["procedures"].append(c_item)
+        elif grp == "HISTORY":
+            result["history"].append(c_item)
 
     return result
 

@@ -109,14 +109,17 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
     t0 = time.time()
     logger.info("[START] ocr_agent")
     try:
-        from agents.ocr_agent.ocr_agent import extract_fields, read_printed
+        from agents.ocr_agent.ocr_agent import extract_fields, read_printed, process_document
         ocr_results = []
 
         # Handle prescription input
         rx_text = case.get("prescription_text")
         if not rx_text and case.get("prescription_image"):
-            rx_text = read_printed(case["prescription_image"])
-        if rx_text:
+            parsed_rx = process_document(case["prescription_image"], run_handwriting=True)
+            rx_text = parsed_rx.get("raw_text", "")
+            ocr_results.append(parsed_rx)
+            adapt_ocr_result(patient_id, parsed_rx, timestamp=timestamp, memory_agent=mem_agent, raw_text=rx_text)
+        elif rx_text:
             parsed_rx = extract_fields(rx_text)
             ocr_results.append(parsed_rx)
             adapt_ocr_result(patient_id, parsed_rx, timestamp=timestamp, memory_agent=mem_agent, raw_text=rx_text)
@@ -124,8 +127,11 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
         # Handle lab input
         lab_text = case.get("lab_text")
         if not lab_text and case.get("lab_image"):
-            lab_text = read_printed(case["lab_image"])
-        if lab_text:
+            parsed_lab = process_document(case["lab_image"], run_handwriting=False)
+            lab_text = parsed_lab.get("raw_text", "")
+            ocr_results.append(parsed_lab)
+            adapt_ocr_result(patient_id, parsed_lab, timestamp=timestamp, memory_agent=mem_agent, raw_text=lab_text)
+        elif lab_text:
             parsed_lab = extract_fields(lab_text)
             ocr_results.append(parsed_lab)
             adapt_ocr_result(patient_id, parsed_lab, timestamp=timestamp, memory_agent=mem_agent, raw_text=lab_text)
@@ -135,6 +141,7 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
             all_labs = []
             raw_texts = []
             all_extracted = []
+            all_hw_candidates = []
             for r in ocr_results:
                 if isinstance(r, dict):
                     all_medicines.extend(r.get("medicines", []))
@@ -145,11 +152,16 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
                         all_extracted.extend(r["extracted"])
                     else:
                         all_extracted.append(r)
+                    if r.get("handwriting_candidates"):
+                        all_hw_candidates.extend(r["handwriting_candidates"])
+            total_unclear = sum(r.get("unclear_regions", 0) for r in ocr_results if isinstance(r, dict))
             context["ocr"] = {
                 "medicines": all_medicines,
                 "labs": all_labs,
                 "raw_text": "\n".join(raw_texts),
                 "extracted": all_extracted,
+                "handwriting_candidates": all_hw_candidates[:5],
+                "unclear_regions": total_unclear,
             }
             agent_status["ocr_agent"] = "ok"
         else:
@@ -195,6 +207,11 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
     logger.info("[START] medical_image_agent")
     if xray_path and os.path.exists(xray_path):
         try:
+            from ml_service.xray_check import check_xray_plausibility, XRAY_REJECT_MESSAGE
+            is_plausible, fail_reason, _ = check_xray_plausibility(xray_path)
+            if not is_plausible:
+                raise ValueError(XRAY_REJECT_MESSAGE)
+
             age_years = case.get("patient_age_years")
             if age_years is None:
                 # Cannot select the correct model without age
@@ -262,16 +279,21 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
     logger.info("[START] risk_and_xai")
     profile = case.get("patient_profile")
     try:
-        from agents.coordination.feature_assembler import assemble_features
+        from agents.coordination.feature_assembler import assemble_features, extract_features_from_ocr
         from agents.xai_agent.xai_agent import explain_with_shap, explain_with_lime
 
-        # Assemble the 21 features with priority: provided > extracted > assumed
+        doc_features = extract_features_from_ocr(context.get("ocr"))
+        use_memory = case.get("use_memory", True)
+
+        # Assemble the 21 features with priority: provided > extracted > saved_record > assumed
         assembler_res = assemble_features(
             provided_profile=profile if isinstance(profile, dict) else {},
             memory_summary=context.get("patient_memory", {}),
             memory_agent=mem_agent,
             patient_id=patient_id,
-            default_strategy="training_median"
+            default_strategy="training_median",
+            use_memory=use_memory,
+            current_doc_features=doc_features,
         )
         context["feature_assembly"] = assembler_res
 
@@ -304,6 +326,9 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
             "features_used": 21,
             "completeness": assembler_res["completeness_message"],
             "known_condition": assembler_res["known_condition"],
+            "sources": assembler_res.get("sources", {}),
+            "saved_records": assembler_res.get("saved_records", []),
+            "assumed_features": assembler_res.get("assumed_features", []),
         }
         context["risk"] = risk_pred
         context["xai"] = {
@@ -334,6 +359,8 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
         from agents.recommendation_agent.recommendation_agent import RecommendationAgent
         rec_agent = RecommendationAgent()
         risk_level = context["risk"].get("predicted_class", "Low")
+        ocr_findings = context.get("ocr") or {}
+        doc_meds = ocr_findings.get("medicines", [])
         rec_res = rec_agent.generate_recommendations(
             risk_level=risk_level,
             probabilities=context["risk"].get("probabilities", {}),
@@ -342,6 +369,10 @@ def run_case(case: Dict[str, Any], memory_storage_dir: Optional[str] = None) -> 
             imaging_result=context["medical_image"],
             patient_profile=context.get("feature_assembly", {}).get("features"),
             assumed_features=context.get("feature_assembly", {}).get("assumed_features", []),
+            sources=context.get("feature_assembly", {}).get("sources", {}),
+            saved_records=context.get("feature_assembly", {}).get("saved_records", []),
+            document_medicines=doc_meds,
+            ocr_result=ocr_findings,
         )
         context["recommendation"] = rec_res
         agent_status["recommendation_agent"] = "ok"

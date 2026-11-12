@@ -27,6 +27,11 @@ import { api } from '../../lib/api';
  * 7. All BRFSS features and recommendation rule codes rendered as human-readable text.
  * 8. Recommendations displayed once as written by the agent with clean category tag and NO checkboxes.
  */
+export function formatDuration(dur) {
+  if (!dur || typeof dur !== 'string') return dur;
+  return dur.replace(/\b(\d+)\s+day\b/gi, (match, n) => (n === '1' ? `${n} day` : `${n} days`));
+}
+
 export default function AnalysisResultView({ data }) {
   const shouldReduceMotion = useReducedMotion();
   const [limeLoading, setLimeLoading] = useState(false);
@@ -92,6 +97,22 @@ export default function AnalysisResultView({ data }) {
   const probs = risk.probabilities || {};
   const completeness = risk.completeness || (risk.features_used ? `${risk.features_used} features evaluated` : '');
   const assumedFeatures = risk.assumed_features || [];
+  const savedRecords = risk.saved_records || result.saved_records || [];
+
+  // ITEM 4: Separate Input completeness from Model reliability
+  const completenessReasons = (reliability?.reasons || []).filter(
+    (r) => !r.includes("Predicted class is 'Medium'") && !r.includes('prediabetes'),
+  );
+  const modelReliabilityReasons = (reliability?.reasons || []).filter(
+    (r) => r.includes("Predicted class is 'Medium'") || r.includes('prediabetes'),
+  );
+  const completenessLevel =
+    reliability?.completeness_level ||
+    (completenessReasons.some((r) => r.includes('fewer than 9'))
+      ? 'low'
+      : reliability?.level === 'low' && modelReliabilityReasons.length > 0 && completenessReasons.length === 0
+        ? 'high'
+        : reliability?.level || 'high');
 
   // Parse explanation bars
   const rawShap = xai.top_shap_features || [];
@@ -134,23 +155,65 @@ export default function AnalysisResultView({ data }) {
       {/* b. Input completeness banner */}
       {reliability && (
         <div
-          className={`${styles.reliabilityBanner} ${styles[`rel_${reliability.level}`] || ''}`}
+          className={`${styles.reliabilityBanner} ${styles[`rel_${completenessLevel}`] || ''}`}
           role="status"
           aria-live="polite"
         >
           <div className={styles.reliabilityTitle}>
-            Input completeness: {reliability.level}
+            Input completeness: {completenessLevel}
           </div>
           <p style={{ margin: '0.25rem 0 0.5rem 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
             This describes how many inputs were available, not the accuracy of the prediction.
           </p>
-          {reliability.reasons?.length > 0 && (
+          {completenessReasons.length > 0 && (
             <ul className={styles.reliabilityReasons}>
-              {reliability.reasons.map((r, i) => (
+              {completenessReasons.map((r, i) => (
                 <li key={i}>{r}</li>
               ))}
             </ul>
           )}
+
+          {/* ITEM 2b: Filled from your saved records */}
+          {savedRecords && savedRecords.length > 0 && (
+            <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+              <strong style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.35rem', color: 'var(--text-primary)' }}>
+                Filled from your saved records (not answered by you)
+              </strong>
+              <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                {savedRecords.map((rec, i) => {
+                  const featName = formatFeature(rec.feature);
+                  const fullFormatted = formatFeature(rec.feature, rec.value);
+                  const valPart = fullFormatted.includes(': ')
+                    ? fullFormatted.split(': ').slice(1).join(': ')
+                    : String(rec.value);
+                  return (
+                    <li key={i} style={{ marginBottom: '0.25rem' }}>
+                      <strong>{featName}:</strong> {valPart} (saved text: &ldquo;{rec.saved_text}&rdquo;{rec.date ? ` on ${rec.date.split('T')[0]}` : ''})
+                      {rec.inferred_from_medicine && (
+                        <span> (inferred from a medicine; this medicine can also be used for other conditions, please verify)</span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Model reliability banner: separate from input completeness */}
+      {(isMediumClass || modelReliabilityReasons.length > 0) && (
+        <div
+          className={`${styles.reliabilityBanner} ${styles.rel_low}`}
+          role="status"
+          aria-live="polite"
+        >
+          <div className={styles.reliabilityTitle}>
+            Medium class: low reliability
+          </div>
+          <p style={{ margin: '0.25rem 0 0.5rem 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+            Predicted class is &lsquo;Medium&rsquo; (Prediabetes), which has low precision and high uncertainty due to severe training class imbalance (1.8% prevalence in BRFSS data).
+          </p>
         </div>
       )}
 
@@ -513,7 +576,17 @@ export default function AnalysisResultView({ data }) {
           </p>
           {!ocrData.hasOcr ? (
             <div style={{ color: 'var(--text-tertiary)', fontSize: '0.88rem', fontStyle: 'italic' }}>
-              No document uploaded
+              {(ocr && (ocr.uploaded || ocr.raw_text !== undefined || ocr.medicines !== undefined || ocr.labs !== undefined)) ||
+              data.documentUploaded ||
+              data.inputSummary?.hasDocument ||
+              data.hasDocument ||
+              data.files?.document ||
+              data.files?.prescription ||
+              data.files?.lab ||
+              result.ocr !== undefined ||
+              result.ocr_findings !== undefined
+                ? 'No text could be read from the uploaded image.'
+                : 'No document uploaded'}
             </div>
           ) : (
             <div>
@@ -536,10 +609,15 @@ export default function AnalysisResultView({ data }) {
                   <div style={{ display: 'grid', gap: '0.5rem' }}>
                     {ocrData.medicines.map((m, idx) => {
                       const medName = m.medicine || 'Medicine';
-                      const dose = m.dosage || 'dose not read';
+                      const dose = m.dose_unclear
+                        ? 'dose unclear - check the original'
+                        : (m.dosage || 'dose not read');
+                      const freqStr = m.frequency_unclear
+                        ? 'frequency unclear - check the original'
+                        : m.frequency;
                       const parts = [medName, dose];
-                      if (m.frequency) parts.push(m.frequency);
-                      if (m.duration) parts.push(m.duration);
+                      if (freqStr) parts.push(freqStr);
+                      if (m.duration) parts.push(formatDuration(m.duration));
                       return (
                         <div key={idx} style={{ background: 'var(--bg-surface-elevated)', padding: '0.6rem 0.85rem', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem' }}>
                           <strong>{medName}</strong>, {parts.slice(1).join(', ')}
@@ -555,22 +633,47 @@ export default function AnalysisResultView({ data }) {
                 </div>
               )}
 
-              {ocrData.handwriting.length > 0 && (
+              {((ocrData.handwriting && ocrData.handwriting.length > 0) || (ocrData.unclearRegions && ocrData.unclearRegions > 0)) && (
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ fontSize: '0.82rem', color: 'var(--accent-amber)', marginBottom: '0.4rem', fontWeight: 600 }}>
                     Handwritten Medicine Candidates
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {ocrData.handwriting.map((h, idx) => (
-                      <div key={idx} style={{ background: 'var(--bg-surface-elevated)', padding: '0.4rem 0.7rem', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem' }}>
-                        <span>{h.medicine}</span>
-                        {h.confidence !== undefined && (
-                          <span style={{ color: 'var(--accent-teal)', fontWeight: 600, marginLeft: '0.35rem' }}>
-                            {Math.round(h.confidence * 100)}%
-                          </span>
-                        )}
-                      </div>
-                    ))}
+                  <div style={{ display: 'grid', gap: '0.5rem' }}>
+                    {ocrData.handwriting
+                      .filter(h => h.name !== 'Unclear' && (h.probability ?? h.confidence) >= 0.3)
+                      .map((h, idx) => {
+                        const prob = h.probability !== undefined ? h.probability : (h.confidence !== undefined ? h.confidence : 0);
+                        return (
+                          <div key={idx} style={{ background: 'var(--bg-surface-elevated)', padding: '0.5rem 0.8rem', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem' }}>
+                            <span>Possible medicine (handwriting model, check the original): <strong>{h.name || h.medicine}</strong></span>
+                            <span style={{ color: 'var(--accent-teal)', fontWeight: 600, marginLeft: '0.45rem' }}>
+                              ({Math.round(prob * 100)}%)
+                            </span>
+                          </div>
+                        );
+                      })}
+
+                    {(() => {
+                      const unclearList = (ocrData.handwriting || []).filter(h => h.name === 'Unclear' || (h.probability ?? h.confidence) < 0.3);
+                      const totalUnclear = Math.max(ocrData.unclearRegions || 0, unclearList.length);
+                      if (totalUnclear === 0) return null;
+                      return (
+                        <details style={{ background: 'var(--bg-surface-elevated)', padding: '0.5rem 0.8rem', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem' }}>
+                          <summary style={{ color: 'var(--text-tertiary)', cursor: 'pointer', userSelect: 'none' }}>
+                            {totalUnclear} handwriting region{totalUnclear === 1 ? '' : 's'} {totalUnclear === 1 ? 'was' : 'were'} unclear
+                          </summary>
+                          {unclearList.length > 0 && (
+                            <div style={{ marginTop: '0.4rem', display: 'grid', gap: '0.3rem' }}>
+                              {unclearList.map((h, uIdx) => (
+                                <div key={uIdx} style={{ color: 'var(--text-tertiary)', fontSize: '0.78rem' }}>
+                                  low confidence, do not rely on this: {h.top3 && h.top3.length > 0 ? h.top3.map(t => `${t.medicine_name || t.medicine} (${Math.round((t.probability || t.confidence || 0) * 100)}%)`).join(', ') : 'No close match'}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </details>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
@@ -582,12 +685,22 @@ export default function AnalysisResultView({ data }) {
                   </div>
                   <div style={{ display: 'grid', gap: '0.5rem' }}>
                     {ocrData.labValues.map((l, idx) => {
-                      const refText = l.reference
-                        ? `(printed reference: ${l.reference}${l.flag ? ` — ${l.flag}` : ''})`
-                        : '';
+                      const unitStr = l.unit_unclear ? 'unit unclear' : (l.unit || '');
+                      let refPart = '';
+                      if (l.reference_unclear) {
+                        refPart = 'reference unclear';
+                      } else if (l.reference_inferred) {
+                        refPart = `reference inferred: ${l.reference}${l.flag ? ` — ${l.flag}` : ''}`;
+                      } else if (l.reference) {
+                        refPart = `printed reference: ${l.reference}${l.flag ? ` — ${l.flag}` : ''}`;
+                      }
+                      const flagPart = l.flag_printed ? `printed flag: ${l.flag_printed}` : '';
+                      const fullRefText = [refPart, flagPart].filter(Boolean).join(', ');
+                      const refDisplay = fullRefText ? `(${fullRefText})` : '';
+
                       return (
                         <div key={idx} style={{ background: 'var(--bg-surface-elevated)', padding: '0.6rem 0.85rem', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem' }}>
-                          <strong>{l.test || 'Lab Test'}</strong>: {l.value} {l.unit} {refText}
+                          <strong>{l.test || 'Lab Test'}</strong>: {l.value} {unitStr} {refDisplay}
                         </div>
                       );
                     })}
@@ -604,22 +717,29 @@ export default function AnalysisResultView({ data }) {
         <GlassPanel>
           <h2 className={styles.riskClassHeading}>Biomedical Entities (Clinical Notes NER)</h2>
           <div style={{ display: 'grid', gap: '1rem' }}>
-            {['Condition', 'Medication', 'Symptom', 'Procedure'].map((category) => {
+            {['Condition', 'Medication', 'Symptom', 'Procedure', 'Family History'].map((category) => {
               const items = groupedEntities[category] || [];
               if (items.length === 0) return null;
+              const displayName = category === 'Family History' ? 'Family History' : `${category}s`;
+              const chipClassKey = `chip_${category.replace(/\s+/g, '')}`;
               return (
                 <div key={category}>
                   <div style={{ fontSize: '0.82rem', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
-                    {category}s ({items.length})
+                    {displayName} ({items.length})
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                     {items.map((item, idx) => (
                       <span
                         key={idx}
-                        className={`${styles.entityChip} ${styles[`chip_${category}`] || ''}`}
+                        className={`${styles.entityChip} ${styles[chipClassKey] || ''}`}
                         title={item.confidence ? `Confidence: ${Math.round(item.confidence * 100)}%` : undefined}
                       >
                         {item.text}
+                        {item.count > 1 && (
+                          <span style={{ marginLeft: '0.35rem', fontWeight: 600, opacity: 0.85 }}>
+                            x{item.count}
+                          </span>
+                        )}
                         {item.negated && <span className={styles.negatedTag}>Denied</span>}
                       </span>
                     ))}
@@ -649,9 +769,10 @@ export default function AnalysisResultView({ data }) {
           <div>
             {recs.map((rec, i) => {
               const ruleId = typeof rec === 'object' ? rec.rule_id : null;
-              const title = formatRuleTitle(ruleId) || `Guidance ${i + 1}`;
+              const title = (typeof rec === 'object' && rec.title) || formatRuleTitle(ruleId) || `Guidance ${i + 1}`;
               const text = typeof rec === 'object' ? (rec.text || rec.guidance_text) : rec;
               const category = typeof rec === 'object' && rec.category ? formatCategory(rec.category) : null;
+              const basedOn = typeof rec === 'object' ? rec.based_on : null;
 
               return (
                 <div key={i} className={styles.recCard}>
@@ -660,6 +781,11 @@ export default function AnalysisResultView({ data }) {
                     {category && <span className={styles.recCategory}>{category}</span>}
                   </div>
                   <p className={styles.recText}>{text}</p>
+                  {basedOn && (
+                    <div className={styles.recBasedOn} style={{ marginTop: '0.45rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      <strong>Based on:</strong> {basedOn}
+                    </div>
+                  )}
                 </div>
               );
             })}

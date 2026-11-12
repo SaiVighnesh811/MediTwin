@@ -425,7 +425,7 @@ def adapt_nlp_result(
         if entity is None:
             return None
         if isinstance(entity, dict):
-            if entity.get("negated"):
+            if entity.get("negated") or entity.get("subject") == "family":
                 return None
             val = entity.get("text") or entity.get("name") or entity.get("diagnosis") or entity.get("symptom") or entity.get("medicine")
             return str(val).strip() if val else None

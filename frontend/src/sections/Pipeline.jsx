@@ -5,7 +5,7 @@ import styles from './Pipeline.module.css';
 const AGENTS = [
   {
     name: 'OCR Agent',
-    desc: 'Reads scanned prescriptions and reports: EasyOCR for printed text (1.22% character error rate) and a ResNet18 classifier for handwritten medicine names.',
+    desc: 'Reads scanned prescriptions and reports: EasyOCR for printed text (1.22% CER) and a 78-class ResNet18 classifier for handwritten medicine names with 0.3 confidence threshold.',
   },
   {
     name: 'NLP Agent',
